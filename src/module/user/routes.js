@@ -11,7 +11,6 @@ const {
   getUsersByActivity,
   getUserPreferences,
 } = require("./controllers/user.controller")
-const authMiddleware = require("../../middleware/auth")
 
 const router = Router()
 

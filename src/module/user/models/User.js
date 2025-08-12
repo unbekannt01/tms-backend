@@ -34,6 +34,14 @@ const userSchema = new mongoose.Schema(
       type: Number,
       min: 1,
     },
+    roleId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Role",
+    },
+    teamId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Team",
+    },
     isLoggedIn: {
       type: Boolean,
       default: false,
@@ -59,6 +67,14 @@ userSchema.virtual("books", {
   ref: "Book",
   localField: "_id",
   foreignField: "userId",
+})
+
+// Virtual for user's role
+userSchema.virtual("role", {
+  ref: "Role",
+  localField: "roleId",
+  foreignField: "_id",
+  justOne: true,
 })
 
 // Ensure virtual fields are serialized

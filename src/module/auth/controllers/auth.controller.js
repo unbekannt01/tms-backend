@@ -1,4 +1,5 @@
 const User = require("../../user/models/User")
+const Role = require("../../rbac/models/Role")
 const bcrypt = require("bcrypt")
 const jwt = require("jsonwebtoken")
 const { v4: uuidv4 } = require("uuid")
@@ -10,10 +11,10 @@ const loginUser = async (req, res) => {
     const { emailOrUserName, password } = req.body
     const identifier = emailOrUserName.toLowerCase()
 
-    // Find user by email OR username
+    // Find user by email OR username and populate role
     const user = await User.findOne({
       $or: [{ email: identifier }, { userName: identifier }],
-    })
+    }).populate("roleId")
 
     if (!user) {
       return res.status(401).json({ message: "Invalid credentials" })
@@ -26,6 +27,16 @@ const loginUser = async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password)
     if (!isMatch) {
       return res.status(401).json({ message: "Invalid credentials" })
+    }
+
+    // Assign default role if user doesn't have one
+    if (!user.roleId) {
+      const defaultRole = await Role.findOne({ name: "user" })
+      if (defaultRole) {
+        user.roleId = defaultRole._id
+        await user.save()
+        await user.populate("roleId")
+      }
     }
 
     // Create JTI for JWT

@@ -1,4 +1,5 @@
 const User = require("../models/User")
+const Role = require("../../rbac/models/Role")
 const Book = require("../../book/models/Book")
 const EmailToken = require("../../auth/models/EmailToken")
 const bcrypt = require("bcrypt")
@@ -27,6 +28,9 @@ const createUser = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10)
 
+    // Get admin user role instead of default "user"
+    const userRole = await Role.findOne({ name: "user" })
+
     const user = new User({
       firstName,
       lastName,
@@ -35,9 +39,12 @@ const createUser = async (req, res) => {
       password: hashedPassword,
       age,
       isVerified: true,
+      roleId: userRole ? userRole._id : null,
     })
 
     const savedUser = await user.save()
+    await savedUser.populate("roleId")
+
     const { password: _, ...userResponse } = savedUser.toObject()
 
     res.status(201).json({
@@ -57,6 +64,9 @@ const createUsers = async (req, res) => {
     if (!Array.isArray(usersData)) {
       usersData = [usersData]
     }
+
+    // Get default user role
+    const defaultRole = await Role.findOne({ name: "user" })
 
     const savedUsers = []
     const errors = []
@@ -87,9 +97,12 @@ const createUsers = async (req, res) => {
         password: hashedPassword,
         age,
         isVerified: true,
+        roleId: defaultRole ? defaultRole._id : null,
       })
 
       const savedUser = await user.save()
+      await savedUser.populate("roleId")
+
       const { password: _, ...userResponse } = savedUser.toObject()
       savedUsers.push(userResponse)
     }
@@ -121,6 +134,9 @@ const createUserWithEmailToken = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10)
 
+    // Get default user role
+    const defaultRole = await Role.findOne({ name: "user" })
+
     const user = new User({
       firstName,
       lastName,
@@ -129,6 +145,7 @@ const createUserWithEmailToken = async (req, res) => {
       password: hashedPassword,
       age,
       isVerified: false,
+      roleId: defaultRole ? defaultRole._id : null,
     })
 
     const savedUser = await user.save()
@@ -164,7 +181,7 @@ const getUser = async (req, res) => {
       {
         password: 0,
       },
-    )
+    ).populate("roleId", "name displayName permissions")
     res.json(users)
   } catch (err) {
     console.error("Get users error:", err)
@@ -180,7 +197,7 @@ const getUserById = async (req, res) => {
       return res.status(400).json({ message: "Invalid user ID format" })
     }
 
-    const user = await User.findById(id, { password: 0 })
+    const user = await User.findById(id, { password: 0 }).populate("roleId", "name displayName permissions")
 
     if (!user) {
       return res.status(404).json({ message: "User not found" })
@@ -212,7 +229,7 @@ const updateUser = async (req, res) => {
     const user = await User.findByIdAndUpdate(id, updateData, {
       new: true,
       select: "-password",
-    })
+    }).populate("roleId", "name displayName permissions")
 
     if (!user) {
       return res.status(404).json({ message: "User not found" })
