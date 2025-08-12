@@ -1,37 +1,31 @@
-const User = require("../models/User");
-const Book = require("../models/Book");
-const EmailToken = require("../models/EmailToken");
-const bcrypt = require("bcrypt");
-const jwt = require("jsonwebtoken");
-const { v4: uuidv4 } = require("uuid");
-const mongoose = require("mongoose");
-const redis = require("../redisClient");
-// import redis from '../redisClient'
+const User = require("../models/User")
+const Book = require("../../book/models/Book")
+const EmailToken = require("../../auth/models/EmailToken")
+const bcrypt = require("bcrypt")
+const jwt = require("jsonwebtoken")
+const { v4: uuidv4 } = require("uuid")
+const mongoose = require("mongoose")
+const redis = require("../../../redisClient")
 
-const config = require("../config/config");
-const { EmailServiceForToken } = require("../services/emailTokenService");
+const config = require("../../../config/config")
+const { EmailServiceForToken } = require("../services/emailTokenService")
 
-const emailServiceForToken = new EmailServiceForToken();
+const emailServiceForToken = new EmailServiceForToken()
 
 const createUser = async (req, res) => {
   try {
-    const { firstName, lastName, userName, email, password, age } = req.body;
+    const { firstName, lastName, userName, email, password, age } = req.body
 
     // Check if user already exists
     const existingUser = await User.findOne({
-      $or: [
-        { email: email.toLowerCase() },
-        { userName: userName.toLowerCase() },
-      ],
-    });
+      $or: [{ email: email.toLowerCase() }, { userName: userName.toLowerCase() }],
+    })
 
     if (existingUser) {
-      return res
-        .status(409)
-        .json({ message: "User with this email or username already exists" });
+      return res.status(409).json({ message: "User with this email or username already exists" })
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(password, 10)
 
     const user = new User({
       firstName,
@@ -41,52 +35,49 @@ const createUser = async (req, res) => {
       password: hashedPassword,
       age,
       isVerified: true,
-    });
+    })
 
-    const savedUser = await user.save();
-    const { password: _, ...userResponse } = savedUser.toObject();
+    const savedUser = await user.save()
+    const { password: _, ...userResponse } = savedUser.toObject()
 
     res.status(201).json({
       message: "User Created Successfully!",
       user: userResponse,
-    });
+    })
   } catch (err) {
-    console.error("Create user error:", err);
-    res.status(500).json({ message: "Internal server error" });
+    console.error("Create user error:", err)
+    res.status(500).json({ message: "Internal server error" })
   }
-};
+}
 
 const createUsers = async (req, res) => {
   try {
-    let usersData = req.body;
+    let usersData = req.body
 
     if (!Array.isArray(usersData)) {
-      usersData = [usersData];
+      usersData = [usersData]
     }
 
-    const savedUsers = [];
-    const errors = [];
+    const savedUsers = []
+    const errors = []
 
     for (const userData of usersData) {
-      const { firstName, lastName, userName, email, password, age } = userData;
+      const { firstName, lastName, userName, email, password, age } = userData
 
       const existingUser = await User.findOne({
-        $or: [
-          { email: email.toLowerCase() },
-          { userName: userName.toLowerCase() },
-        ],
-      });
+        $or: [{ email: email.toLowerCase() }, { userName: userName.toLowerCase() }],
+      })
 
       if (existingUser) {
         errors.push({
           email,
           userName,
           message: "User with this email or username already exists",
-        });
-        continue;
+        })
+        continue
       }
 
-      const hashedPassword = await bcrypt.hash(password, 10);
+      const hashedPassword = await bcrypt.hash(password, 10)
 
       const user = new User({
         firstName,
@@ -96,42 +87,39 @@ const createUsers = async (req, res) => {
         password: hashedPassword,
         age,
         isVerified: true,
-      });
+      })
 
-      const savedUser = await user.save();
-      const { password: _, ...userResponse } = savedUser.toObject();
-      savedUsers.push(userResponse);
+      const savedUser = await user.save()
+      const { password: _, ...userResponse } = savedUser.toObject()
+      savedUsers.push(userResponse)
     }
 
     res.status(201).json({
       message: `Processed ${usersData.length} users.`,
       savedUsers,
       errors,
-    });
+    })
   } catch (err) {
-    console.error("Bulk create user error:", err);
-    res.status(500).json({ message: "Internal server error" });
+    console.error("Bulk create user error:", err)
+    res.status(500).json({ message: "Internal server error" })
   }
-};
+}
 
 const createUserWithEmailToken = async (req, res) => {
   try {
-    const { firstName, lastName, userName, email, password, age } = req.body;
+    const { firstName, lastName, userName, email, password, age } = req.body
 
     const existingUser = await User.findOne({
-      $or: [
-        { email: email.toLowerCase() },
-        { userName: userName.toLowerCase() },
-      ],
-    });
+      $or: [{ email: email.toLowerCase() }, { userName: userName.toLowerCase() }],
+    })
 
     if (existingUser) {
       return res.status(409).json({
         message: "User with this email or username already exists",
-      });
+      })
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(password, 10)
 
     const user = new User({
       firstName,
@@ -141,116 +129,33 @@ const createUserWithEmailToken = async (req, res) => {
       password: hashedPassword,
       age,
       isVerified: false,
-    });
+    })
 
-    const savedUser = await user.save();
+    const savedUser = await user.save()
 
-    const token = uuidv4();
-    const tokenExpiration = new Date(
-      Date.now() + config.emailTokenExpiration.emailTokenExpiry
-    );
+    const token = uuidv4()
+    const tokenExpiration = new Date(Date.now() + config.emailTokenExpiration.emailTokenExpiry)
 
     const emailToken = new EmailToken({
       userId: savedUser._id,
       verificationToken: token,
       tokenExpiration: tokenExpiration,
-    });
+    })
 
-    await emailToken.save();
+    await emailToken.save()
 
-    const devLink = `http://localhost:3001/api/v2/verifyEmail/${token}`;
-    await emailServiceForToken.sendTokenEmail(
-      savedUser.email,
-      devLink,
-      savedUser.firstName
-    );
+    const devLink = `http://localhost:3001/api/v2/verifyEmail/${token}`
+    await emailServiceForToken.sendTokenEmail(savedUser.email, devLink, savedUser.firstName)
 
     res.status(201).json({
-      message:
-        "User created successfully! Verification token sent to email (development mode).",
+      message: "User created successfully! Verification token sent to email (development mode).",
       user: savedUser,
-    });
+    })
   } catch (err) {
-    console.error("Create user error:", err);
-    res.status(500).json({ message: "Internal server error" });
+    console.error("Create user error:", err)
+    res.status(500).json({ message: "Internal server error" })
   }
-};
-
-const loginUser = async (req, res) => {
-  try {
-    const { emailOrUserName, password } = req.body;
-    const identifier = emailOrUserName.toLowerCase();
-
-    // Find user by email OR username
-    const user = await User.findOne({
-      $or: [{ email: identifier }, { userName: identifier }],
-    });
-
-    if (!user) {
-      return res.status(401).json({ message: "Invalid credentials" });
-    }
-
-    if (!user.isVerified) {
-      return res.status(403).json({ message: "User not verified yet" });
-    }
-
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(401).json({ message: "Invalid credentials" });
-    }
-
-    // Create JTI for JWT
-    const jti = uuidv4();
-    const token = jwt.sign({ userId: user._id, jti }, config.jwt.secret, {
-      expiresIn: config.jwt.expiresIn,
-    });
-
-    // Store JTI in Redis for token validation / blacklisting
-    // EX 3600 → expire in 1 hour
-    await redis.set(`jti:${jti}`, user._id.toString(), "EX", 3600);
-
-    // Update user status
-    user.isLoggedIn = true;
-    user.status = "active";
-    await user.save();
-
-    const { password: _password, ...userResponse } = user.toObject();
-
-    res.status(200).json({
-      message: "Login successful!",
-      user: userResponse,
-      token,
-    });
-  } catch (err) {
-    console.error("Login error:", err);
-    res.status(500).json({ message: "Internal server error" });
-  }
-};
-
-const logOutUser = async (req, res) => {
-  try {
-    const jti = req.jti;
-    const userId = req.userId;
-
-    if (jti) {
-      await redis.del(`jti:${jti}`);
-    }
-
-    if (userId) {
-      const user = await User.findById(userId);
-      if (user) {
-        user.isLoggedIn = false;
-        user.status = "inactive";
-        await user.save();
-      }
-    }
-
-    res.json({ message: "User logged out successfully" });
-  } catch (err) {
-    console.error("Logout error:", err);
-    res.status(500).json({ message: "Internal server error" });
-  }
-};
+}
 
 const getUser = async (req, res) => {
   try {
@@ -258,27 +163,27 @@ const getUser = async (req, res) => {
       {},
       {
         password: 0,
-      }
-    );
-    res.json(users);
+      },
+    )
+    res.json(users)
   } catch (err) {
-    console.error("Get users error:", err);
-    res.status(500).json({ message: "Internal server error" });
+    console.error("Get users error:", err)
+    res.status(500).json({ message: "Internal server error" })
   }
-};
+}
 
 const getUserById = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { id } = req.params
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ message: "Invalid user ID format" });
+      return res.status(400).json({ message: "Invalid user ID format" })
     }
 
-    const user = await User.findById(id, { password: 0 });
+    const user = await User.findById(id, { password: 0 })
 
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({ message: "User not found" })
     }
 
     const books = await Book.find(
@@ -287,62 +192,62 @@ const getUserById = async (req, res) => {
         name: 1,
         author: 1,
         price: 1,
-      }
-    );
+      },
+    )
 
-    const userWithBooks = { ...user.toObject(), books };
+    const userWithBooks = { ...user.toObject(), books }
 
-    res.json(userWithBooks);
+    res.json(userWithBooks)
   } catch (err) {
-    console.error("Get user by ID error:", err);
-    res.status(500).json({ message: "Internal server error" });
+    console.error("Get user by ID error:", err)
+    res.status(500).json({ message: "Internal server error" })
   }
-};
+}
 
 const updateUser = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { password, ...updateData } = req.body;
+    const { id } = req.params
+    const { password, ...updateData } = req.body
 
     const user = await User.findByIdAndUpdate(id, updateData, {
       new: true,
       select: "-password",
-    });
+    })
 
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({ message: "User not found" })
     }
 
     res.json({
       message: "User updated successfully",
       user,
-    });
+    })
   } catch (err) {
-    console.error("Update user error:", err);
-    res.status(500).json({ message: "Internal server error" });
+    console.error("Update user error:", err)
+    res.status(500).json({ message: "Internal server error" })
   }
-};
+}
 
 const deleteUser = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { id } = req.params
 
-    const user = await User.findByIdAndDelete(id);
+    const user = await User.findByIdAndDelete(id)
 
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({ message: "User not found" })
     }
 
-    res.json({ message: "User deleted successfully" });
+    res.json({ message: "User deleted successfully" })
   } catch (err) {
-    console.error("Delete user error:", err);
-    res.status(500).json({ message: "Internal server error" });
+    console.error("Delete user error:", err)
+    res.status(500).json({ message: "Internal server error" })
   }
-};
+}
 
 const getUserWithBooks = async (req, res) => {
   try {
-    const { userId } = req.params;
+    const { userId } = req.params
 
     const result = await User.aggregate([
       { $match: { _id: new mongoose.Types.ObjectId(userId) } },
@@ -363,22 +268,22 @@ const getUserWithBooks = async (req, res) => {
           "books.price": 1,
         },
       },
-    ]);
+    ])
 
-    res.json(result[0] || {});
+    res.json(result[0] || {})
   } catch (error) {
-    console.error("Error in getUserWithBooks:", error);
-    res.status(500).json({ message: "Server Error" });
+    console.error("Error in getUserWithBooks:", error)
+    res.status(500).json({ message: "Server Error" })
   }
-};
+}
 
 const getAllUsersWithBooks = async (req, res) => {
   try {
-    const page = Number.parseInt(req.query.page, 10) || 1;
-    const limit = Number.parseInt(req.query.limit, 10) || 10;
-    const skip = (page - 1) * limit;
+    const page = Number.parseInt(req.query.page, 10) || 1
+    const limit = Number.parseInt(req.query.limit, 10) || 10
+    const skip = (page - 1) * limit
 
-    const total = await User.countDocuments();
+    const total = await User.countDocuments()
 
     const data = await User.aggregate([
       {
@@ -400,7 +305,7 @@ const getAllUsersWithBooks = async (req, res) => {
       },
       { $skip: skip },
       { $limit: limit },
-    ]);
+    ])
 
     res.json({
       page,
@@ -408,22 +313,16 @@ const getAllUsersWithBooks = async (req, res) => {
       total,
       totalPages: Math.ceil(total / limit),
       data,
-    });
+    })
   } catch (error) {
-    console.error("Error in getAllUsersWithBooks:", error);
-    res.status(500).json({ message: "Server Error" });
+    console.error("Error in getAllUsersWithBooks:", error)
+    res.status(500).json({ message: "Server Error" })
   }
-};
+}
 
 const getUsersByActivity = async (req, res) => {
   try {
-    const {
-      activityLevel = "all",
-      minBooks = 0,
-      maxBooks = 1000,
-      sortBy = "bookCount",
-      sortOrder = "desc",
-    } = req.query;
+    const { activityLevel = "all", minBooks = 0, maxBooks = 1000, sortBy = "bookCount", sortOrder = "desc" } = req.query
 
     const pipeline = [
       {
@@ -468,10 +367,10 @@ const getUsersByActivity = async (req, res) => {
           },
         },
       },
-    ];
+    ]
 
     if (activityLevel !== "all") {
-      pipeline.push({ $match: { activityScore: activityLevel } });
+      pipeline.push({ $match: { activityScore: activityLevel } })
     }
 
     pipeline.push({
@@ -481,11 +380,11 @@ const getUsersByActivity = async (req, res) => {
           $lte: Number.parseInt(maxBooks),
         },
       },
-    });
+    })
 
-    const sortObj = {};
-    sortObj[sortBy] = sortOrder === "desc" ? -1 : 1;
-    pipeline.push({ $sort: sortObj });
+    const sortObj = {}
+    sortObj[sortBy] = sortOrder === "desc" ? -1 : 1
+    pipeline.push({ $sort: sortObj })
 
     pipeline.push({
       $project: {
@@ -503,24 +402,24 @@ const getUsersByActivity = async (req, res) => {
         isLoggedIn: 1,
         preferredAuthors: { $slice: ["$preferredAuthors", 5] },
       },
-    });
+    })
 
-    const result = await User.aggregate(pipeline);
+    const result = await User.aggregate(pipeline)
 
     res.json({
       message: "Users by activity retrieved successfully",
       count: result.length,
       users: result,
-    });
+    })
   } catch (error) {
-    console.error("Error in getUsersByActivity:", error);
-    res.status(500).json({ message: "Server Error" });
+    console.error("Error in getUsersByActivity:", error)
+    res.status(500).json({ message: "Server Error" })
   }
-};
+}
 
 const getUserPreferences = async (req, res) => {
   try {
-    const { userId } = req.params;
+    const { userId } = req.params
 
     const pipeline = [
       { $match: { _id: new mongoose.Types.ObjectId(userId) } },
@@ -610,36 +509,34 @@ const getUserPreferences = async (req, res) => {
           recentBooksCount: 1,
         },
       },
-    ];
+    ]
 
-    const result = await User.aggregate(pipeline);
+    const result = await User.aggregate(pipeline)
 
     if (!result.length) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({ message: "User not found" })
     }
 
     res.json({
       message: "User preferences retrieved successfully",
       preferences: result[0],
-    });
+    })
   } catch (error) {
-    console.error("Error in getUserPreferences:", error);
-    res.status(500).json({ message: "Server Error" });
+    console.error("Error in getUserPreferences:", error)
+    res.status(500).json({ message: "Server Error" })
   }
-};
+}
 
 module.exports = {
   createUser,
   createUsers,
   createUserWithEmailToken,
-  loginUser,
   getUser,
   getUserById,
   updateUser,
   deleteUser,
-  logOutUser,
   getUserWithBooks,
   getAllUsersWithBooks,
   getUsersByActivity,
   getUserPreferences,
-};
+}

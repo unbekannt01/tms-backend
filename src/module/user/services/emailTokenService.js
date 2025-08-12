@@ -1,31 +1,29 @@
-const nodemailer = require("nodemailer");
-const config = require("../config/config");
+const nodemailer = require("nodemailer")
+const config = require("../../../config/config")
 
 class EmailServiceForToken {
   constructor() {
-    this.transporter = this.createTransporter();
+    this.transporter = this.createTransport()
   }
 
-  createTransporter() {
+  createTransport() {
     return nodemailer.createTransport({
       host: config.smtp.host,
-      port: parseInt(config.smtp.port || "587"),
+      port: Number.parseInt(config.smtp.port || "587"),
       secure: config.smtp.secure,
       auth: {
         user: config.smtp.user,
         pass: config.smtp.pass,
       },
-    });
+    })
   }
 
   async sendTokenEmail(email, token, firstName) {
     try {
-    //   const backendVerifyUrl = `http://localhost:3001/api/v2/verifyEmail/${token}`;
-
       const mailOptions = {
         from: `"Auth" <${config.smtp.user}>`,
         to: email,
-        subject: '🔑 Email Verification Token (Testing Only)',
+        subject: "🔑 Email Verification Token (Testing Only)",
         text: `Hello ${firstName}, your testing token is: ${token}. This will expire in 1 hour. For backend use only. Verify at: ${token}`,
         html: `
         <div style="background-color:#f4f4f4; padding:20px; font-family: Arial, sans-serif;">
@@ -50,16 +48,16 @@ class EmailServiceForToken {
           </table>
         </div>
         `,
-      };
+      }
 
-      const info = await this.transporter.sendMail(mailOptions);
-      console.log('Token email sent successfully:', info.messageId);
-      return true;
+      const info = await this.transporter.sendMail(mailOptions)
+      console.log("Token email sent successfully:", info.messageId)
+      return true
     } catch (error) {
-      console.error('Failed to send token email:', error);
-      return false;
+      console.error("Failed to send token email:", error)
+      return false
     }
   }
 }
 
-module.exports = { EmailServiceForToken };
+module.exports = { EmailServiceForToken }

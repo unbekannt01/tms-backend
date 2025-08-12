@@ -1,21 +1,21 @@
-const nodemailer = require('nodemailer');
-const config = require('../config/config');
+const nodemailer = require("nodemailer")
+const config = require("../../../config/config")
 
 class EmailServiceForOTP {
   constructor() {
-    this.transporter = this.createTransporter();
+    this.transporter = this.createTransport()
   }
 
-  createTransporter() {
+  createTransport() {
     return nodemailer.createTransport({
       host: config.smtp.host,
-      port: parseInt(config.smtp.port || "587"),
+      port: Number.parseInt(config.smtp.port || "587"),
       secure: config.smtp.secure || "true",
       auth: {
         user: config.smtp.user,
         pass: config.smtp.pass,
       },
-    });
+    })
   }
 
   async sendOtpEmail(email, otp, firstName) {
@@ -23,7 +23,7 @@ class EmailServiceForOTP {
       const mailOptions = {
         from: `"Auth" <${config.smtp.user}>`,
         to: email,
-        subject: '🔐 Your OTP for Secure Login',
+        subject: "🔐 Your OTP for Secure Login",
         text: `Your OTP for verification is ${otp}.`,
         html: `
         <div style="background-color:#f4f4f4; padding:20px; font-family: Arial, sans-serif;">
@@ -42,16 +42,16 @@ class EmailServiceForOTP {
           </table>
         </div>
         `,
-      };
+      }
 
-      const info = await this.transporter.sendMail(mailOptions);
-      console.log('OTP email sent successfully:', info.messageId);
-      return true;
+      const info = await this.transporter.sendMail(mailOptions)
+      console.log("OTP email sent successfully:", info.messageId)
+      return true
     } catch (error) {
-      console.error('Failed to send OTP email:', error);
-      return false;
+      console.error("Failed to send OTP email:", error)
+      return false
     }
   }
 }
 
-module.exports = { EmailServiceForOTP };
+module.exports = { EmailServiceForOTP }

@@ -13,7 +13,7 @@ module.exports = {
     uri: process.env.MONGO_URI,
   },
   server: {
-    port: parseInt(process.env.PORT, 10) || 3000,
+    port: parseInt(process.env.PORT, 10) || 3001,
   },
   jwt: {
     secret: process.env.JWT_SECRET_KEY,

@@ -1,16 +1,16 @@
-const Book = require("../models/Book");
-const User = require("../models/User");
-const mongoose = require("mongoose");
+const Book = require("../models/Book")
+const User = require("../../user/models/User")
+const mongoose = require("mongoose")
 
 const createBook = async (req, res) => {
   try {
-    const currentUser = req.user;
+    const currentUser = req.user
 
     if (!currentUser) {
-      return res.status(401).json({ message: "Unauthorized. Please log in." });
+      return res.status(401).json({ message: "Unauthorized. Please log in." })
     }
 
-    const { name, author, price, description, genre } = req.body;
+    const { name, author, price, description, genre } = req.body
 
     const book = new Book({
       name,
@@ -19,108 +19,102 @@ const createBook = async (req, res) => {
       description,
       genre,
       userId: currentUser._id,
-    });
+    })
 
-    const savedBook = await book.save();
+    const savedBook = await book.save()
 
     res.status(201).json({
       message: "Book created successfully",
       book: savedBook,
-    });
+    })
   } catch (err) {
-    console.error("Create book error:", err);
-    res.status(500).json({ message: "Internal server error" });
+    console.error("Create book error:", err)
+    res.status(500).json({ message: "Internal server error" })
   }
-};
+}
 
 const getBooks = async (req, res) => {
   try {
-    const books = await Book.find().populate("userId", "userName email");
-    res.json(books);
+    const books = await Book.find().populate("userId", "userName email")
+    res.json(books)
   } catch (err) {
-    console.error("Get books error:", err);
-    res.status(500).json({ message: "Internal server error" });
+    console.error("Get books error:", err)
+    res.status(500).json({ message: "Internal server error" })
   }
-};
+}
 
 const getBookById = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { id } = req.params
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ message: "Invalid book ID format" });
+      return res.status(400).json({ message: "Invalid book ID format" })
     }
 
-    const book = await Book.findById(id).populate("userId", "userName email");
+    const book = await Book.findById(id).populate("userId", "userName email")
 
     if (!book) {
-      return res.status(404).json({ message: "Book not found" });
+      return res.status(404).json({ message: "Book not found" })
     }
 
-    res.json(book);
+    res.json(book)
   } catch (err) {
-    console.error("Get book by ID error:", err);
-    res.status(500).json({ message: "Internal server error" });
+    console.error("Get book by ID error:", err)
+    res.status(500).json({ message: "Internal server error" })
   }
-};
+}
 
 const updateBook = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { id } = req.params
 
-    const book = await Book.findByIdAndUpdate(id, req.body, { new: true });
+    const book = await Book.findByIdAndUpdate(id, req.body, { new: true })
 
     if (!book) {
-      return res.status(404).json({ message: "Book not found" });
+      return res.status(404).json({ message: "Book not found" })
     }
 
     res.json({
       message: "Book updated successfully",
       book,
-    });
+    })
   } catch (err) {
-    console.error("Update book error:", err);
-    res.status(500).json({ message: "Internal server error" });
+    console.error("Update book error:", err)
+    res.status(500).json({ message: "Internal server error" })
   }
-};
+}
 
 const deleteBook = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { id } = req.params
 
-    const book = await Book.findByIdAndDelete(id);
+    const book = await Book.findByIdAndDelete(id)
 
     if (!book) {
-      return res.status(404).json({ message: "Book not found" });
+      return res.status(404).json({ message: "Book not found" })
     }
 
-    res.json({ message: "Book deleted successfully" });
+    res.json({ message: "Book deleted successfully" })
   } catch (err) {
-    console.error("Delete book error:", err);
-    res.status(500).json({ message: "Internal server error" });
+    console.error("Delete book error:", err)
+    res.status(500).json({ message: "Internal server error" })
   }
-};
+}
 
 const getBooksByFilters = async (req, res) => {
   try {
-    const {
-      minPrice,
-      maxPrice,
-      author,
-      sortBy = "createdAt",
-      sortOrder = "desc",
-    } = req.query;
+    const { minPrice, maxPrice, author, sortBy = "createdAt", sortOrder = "desc" } = req.query
 
-    const matchConditions = {};
+    const matchConditions = {}
 
     if (minPrice || maxPrice) {
-      matchConditions.price = {};
-      if (minPrice) matchConditions.price.$gte = Number.parseFloat(minPrice);
-      if (maxPrice) matchConditions.price.$lte = Number.parseFloat(maxPrice);
+      matchConditions.price = {}
+      if (minPrice) matchConditions.price.$gte = Number.parseFloat(minPrice)
+      if (maxPrice) matchConditions.price.$lte = Number.parseFloat(maxPrice)
     }
 
     if (author) {
-      matchConditions.author = { $regex: author, $options: "i" };
+      matchConditions.author = { $regex: author, $options: "i" }
     }
 
     const pipeline = [
@@ -133,11 +127,11 @@ const getBooksByFilters = async (req, res) => {
           as: "userInfo",
         },
       },
-    ];
+    ]
 
-    const sortObj = {};
-    sortObj[sortBy] = sortOrder === "desc" ? -1 : 1;
-    pipeline.push({ $sort: sortObj });
+    const sortObj = {}
+    sortObj[sortBy] = sortOrder === "desc" ? -1 : 1
+    pipeline.push({ $sort: sortObj })
 
     pipeline.push({
       $project: {
@@ -150,25 +144,25 @@ const getBooksByFilters = async (req, res) => {
         "userInfo.userName": 1,
         "userInfo.email": 1,
       },
-    });
+    })
 
-    const result = await Book.aggregate(pipeline);
+    const result = await Book.aggregate(pipeline)
 
     res.json({
       message: "Books retrieved successfully",
       count: result.length,
       books: result,
-    });
+    })
   } catch (error) {
-    console.error("Error in getBooksByFilters:", error);
-    res.status(500).json({ message: "Server Error" });
+    console.error("Error in getBooksByFilters:", error)
+    res.status(500).json({ message: "Server Error" })
   }
-};
+}
 
 const getBookRecommendations = async (req, res) => {
   try {
-    const { userId } = req.params;
-    const { limit = 10 } = req.query;
+    const { userId } = req.params
+    const { limit = 10 } = req.query
 
     const pipeline = [
       {
@@ -228,16 +222,10 @@ const getBookRecommendations = async (req, res) => {
                         {
                           $and: [
                             {
-                              $gte: [
-                                "$price",
-                                { $multiply: ["$$avgPrice", 0.7] },
-                              ],
+                              $gte: ["$price", { $multiply: ["$$avgPrice", 0.7] }],
                             },
                             {
-                              $lte: [
-                                "$price",
-                                { $multiply: ["$$avgPrice", 1.3] },
-                              ],
+                              $lte: ["$price", { $multiply: ["$$avgPrice", 1.3] }],
                             },
                           ],
                         },
@@ -276,19 +264,19 @@ const getBookRecommendations = async (req, res) => {
           recommendations: 1,
         },
       },
-    ];
+    ]
 
-    const result = await User.aggregate(pipeline);
+    const result = await User.aggregate(pipeline)
 
     res.json({
       message: "Book recommendations retrieved successfully",
       recommendations: result[0]?.recommendations || [],
-    });
+    })
   } catch (error) {
-    console.error("Error in getBookRecommendations:", error);
-    res.status(500).json({ message: "Server Error" });
+    console.error("Error in getBookRecommendations:", error)
+    res.status(500).json({ message: "Server Error" })
   }
-};
+}
 
 module.exports = {
   createBook,
@@ -298,4 +286,4 @@ module.exports = {
   deleteBook,
   getBooksByFilters,
   getBookRecommendations,
-};
+}

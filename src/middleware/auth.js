@@ -1,7 +1,7 @@
 const jwt = require("jsonwebtoken");
 const redis = require("../redisClient");
 const config = require("../config/config");
-const User = require("../models/User");
+const User = require("../module/user/models/User");
 
 const authMiddleware = async (req, res, next) => {
   const authHeader = req.headers["authorization"];
