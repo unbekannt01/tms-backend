@@ -23,6 +23,7 @@
     "redis": "^4.7.1",
     "reflect-metadata": "^0.1.13",
     "typeorm": "^0.3.25",
+    "ua-parser-js": "^2.0.4",
     "uuid": "^11.1.0"
   },
   "devDependencies": {
