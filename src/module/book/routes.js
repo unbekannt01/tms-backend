@@ -1,4 +1,4 @@
-const { Router } = require("express")
+const { Router } = require("express");
 const {
   createBook,
   getBooks,
@@ -7,21 +7,21 @@ const {
   deleteBook,
   getBooksByFilters,
   getBookRecommendations,
-} = require("./controllers/book.controller")
-const authMiddleware = require("../../middleware/auth")
+} = require("./controllers/book.controller");
+const sessionAuthMiddleware = require("../../middleware/sessionAuth");
 
-const router = Router()
+const router = Router();
 
-router.post("/books", authMiddleware, createBook)
+router.post("/books", sessionAuthMiddleware, createBook);
 
 // Specific routes first
-router.get("/books/getBooks", authMiddleware, getBooks)
-router.get("/books/recommendations/:userId", getBookRecommendations)
-router.get("/books", getBooksByFilters)
+router.get("/books/getBooks", sessionAuthMiddleware, getBooks);
+router.get("/books/recommendations/:userId", getBookRecommendations);
+router.get("/books", getBooksByFilters);
 
 // Generic param routes last
-router.get("/books/:id", authMiddleware, getBookById)
-router.put("/books/:id", authMiddleware, updateBook)
-router.delete("/books/:id", authMiddleware, deleteBook)
+router.get("/books/:id", sessionAuthMiddleware, getBookById);
+router.put("/books/:id", sessionAuthMiddleware, updateBook);
+router.delete("/books/:id", sessionAuthMiddleware, deleteBook);
 
-module.exports = router
+module.exports = router;

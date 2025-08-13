@@ -1,10 +1,8 @@
 const User = require("../../user/models/User")
 const Role = require("../../rbac/models/Role")
 const bcrypt = require("bcrypt")
-const jwt = require("jsonwebtoken")
-const { v4: uuidv4 } = require("uuid")
-const redis = require("../../../redisClient")
-const config = require("../../../config/config")
+const { createSession, invalidateSession } = require("../../../utils/sessionUtils")
+const { parseDeviceInfo } = require("../../../utils/deviceUtils")
 
 const loginUser = async (req, res) => {
   try {
@@ -39,15 +37,11 @@ const loginUser = async (req, res) => {
       }
     }
 
-    // Create JTI for JWT
-    const jti = uuidv4()
-    const token = jwt.sign({ userId: user._id.toString(), jti }, config.jwt.secret, {
-      expiresIn: config.jwt.expiresIn,
-    })
+    // Parse device information
+    const deviceInfo = parseDeviceInfo(req.headers["user-agent"], req.ip || req.connection.remoteAddress)
 
-    // Store JTI in Redis for token validation / blacklisting
-    // EX 3600 → expire in 1 hour
-    await redis.set(`jti:${jti}`, user._id.toString(), "EX", 3600)
+    // Create new session (this will automatically handle session limit)
+    const sessionId = await createSession(user._id, deviceInfo)
 
     // Update user status
     user.isLoggedIn = true
@@ -59,35 +53,41 @@ const loginUser = async (req, res) => {
     res.status(200).json({
       message: "Login successful!",
       user: userResponse,
-      token,
+      sessionId,
     })
   } catch (err) {
-    console.error("Login error:", err)
     res.status(500).json({ message: "Internal server error" })
   }
 }
 
 const logOutUser = async (req, res) => {
   try {
-    const jti = req.jti
+    const sessionId = req.sessionId
     const userId = req.userId
 
-    if (jti) {
-      await redis.del(`jti:${jti}`)
+    // Invalidate current session
+    if (sessionId) {
+      await invalidateSession(sessionId)
     }
 
+    // Update user status if no other active sessions
     if (userId) {
       const user = await User.findById(userId)
       if (user) {
-        user.isLoggedIn = false
-        user.status = "inactive"
-        await user.save()
+        // Check if user has other active sessions
+        const { getUserActiveSessions } = require("../../../utils/sessionUtils")
+        const activeSessions = await getUserActiveSessions(userId)
+
+        if (activeSessions.length === 0) {
+          user.isLoggedIn = false
+          user.status = "inactive"
+          await user.save()
+        }
       }
     }
 
     res.json({ message: "User logged out successfully" })
   } catch (err) {
-    console.error("Logout error:", err)
     res.status(500).json({ message: "Internal server error" })
   }
 }
@@ -107,16 +107,15 @@ const getCurrentUser = async (req, res) => {
     res.status(200).json({
       message: "Session valid",
       user: userData,
+      sessionId: req.sessionId,
     })
   } catch (err) {
-    console.error("Get current user error:", err)
     res.status(500).json({ message: "Internal server error" })
   }
 }
 
-
 module.exports = {
   loginUser,
   logOutUser,
-  getCurrentUser
+  getCurrentUser,
 }

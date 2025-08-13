@@ -11,22 +11,23 @@ const {
   getUsersByActivity,
   getUserPreferences,
 } = require("./controllers/user.controller")
+const sessionAuthMiddleware = require("../../middleware/sessionAuth")
 
 const router = Router()
 
-router.post("/users/register", createUser)
-router.post("/users/v2/register", createUserWithEmailToken)
+router.post("/users/register", sessionAuthMiddleware, createUser)
+router.post("/users/v2/register", sessionAuthMiddleware, createUserWithEmailToken)
 
 // Specific GET routes first
-router.get("/users/activity", getUsersByActivity)
-router.get("/users/getUserWithBooks/:userId", getUserWithBooks)
-router.get("/usersWithBooks", getAllUsersWithBooks)
-router.get("/users/preferences/:userId", getUserPreferences)
-router.get("/users", getUser)
+router.get("/users/activity", sessionAuthMiddleware, getUsersByActivity)
+router.get("/users/getUserWithBooks/:userId", sessionAuthMiddleware, getUserWithBooks)
+router.get("/usersWithBooks", sessionAuthMiddleware, getAllUsersWithBooks)
+router.get("/users/preferences/:userId", sessionAuthMiddleware, getUserPreferences)
+router.get("/users", sessionAuthMiddleware, getUser)
 
 // Generic param routes last
-router.get("/users/:id", getUserById)
-router.put("/users/:id", updateUser)
-router.delete("/users/:id", deleteUser)
+router.get("/users/:id", sessionAuthMiddleware, getUserById)
+router.put("/users/:id", sessionAuthMiddleware, updateUser)
+router.delete("/users/:id", sessionAuthMiddleware, deleteUser)
 
 module.exports = router
