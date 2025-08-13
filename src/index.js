@@ -1,40 +1,42 @@
-require("dotenv").config()
-const express = require("express")
-const cors = require("cors")
-const connectDB = require("./config/database")
-const { initializeModules } = require("./module")
+require("dotenv").config();
+const express = require("express");
+const cors = require("cors");
+const connectDB = require("./config/database");
+const { initializeModules } = require("./module");
 
-const app = express()
+const app = express();
 
 // Middleware
-app.use(cors({
-  origin: 'http://localhost:3000',
-  credentials: true
-}));
-app.use(express.json({ limit: "10mb" }))
-app.use(express.urlencoded({ extended: true }))
+app.use(
+  cors({
+    origin: ["http://localhost:3000", "https://auth-app-one-orcin.vercel.app"],
+    credentials: true,
+  })
+);
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true }));
 
 // Routes
-initializeModules(app)
+initializeModules(app);
 
 // 404 Handler
 app.use("*", (req, res) => {
-  res.status(404).json({ message: "Route not found" })
-})
+  res.status(404).json({ message: "Route not found" });
+});
 
-const PORT = process.env.PORT || 3001
+const PORT = process.env.PORT || 3001;
 
 // Initialize Database & Start Server
 const startServer = async () => {
   try {
-    await connectDB()
+    await connectDB();
     app.listen(PORT, () => {
-      console.log(`Server running on http://localhost:${PORT}`)
-    })
+      console.log(`Server running on http://localhost:${PORT}`);
+    });
   } catch (error) {
-    console.error("Failed to start server:", error)
-    process.exit(1)
+    console.error("Failed to start server:", error);
+    process.exit(1);
   }
-}
+};
 
-startServer()
+startServer();
