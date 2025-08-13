@@ -9,7 +9,7 @@ const config = require("../../../config/config")
 const loginUser = async (req, res) => {
   try {
     const { emailOrUserName, password } = req.body
-    const identifier = emailOrUserName.toLowerCase()
+    const identifier = emailOrUserName
 
     // Find user by email OR username and populate role
     const user = await User.findOne({
@@ -41,7 +41,7 @@ const loginUser = async (req, res) => {
 
     // Create JTI for JWT
     const jti = uuidv4()
-    const token = jwt.sign({ userId: user._id, jti }, config.jwt.secret, {
+    const token = jwt.sign({ userId: user._id.toString(), jti }, config.jwt.secret, {
       expiresIn: config.jwt.expiresIn,
     })
 
@@ -92,7 +92,31 @@ const logOutUser = async (req, res) => {
   }
 }
 
+const getCurrentUser = async (req, res) => {
+  try {
+    let userData
+
+    if (typeof req.user?.toObject === "function") {
+      userData = req.user.toObject()
+    } else {
+      userData = { ...req.user }
+    }
+
+    delete userData.password
+
+    res.status(200).json({
+      message: "Session valid",
+      user: userData,
+    })
+  } catch (err) {
+    console.error("Get current user error:", err)
+    res.status(500).json({ message: "Internal server error" })
+  }
+}
+
+
 module.exports = {
   loginUser,
   logOutUser,
+  getCurrentUser
 }

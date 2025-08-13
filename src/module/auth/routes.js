@@ -1,5 +1,5 @@
 const { Router } = require("express")
-const { loginUser, logOutUser } = require("./controllers/auth.controller")
+const { loginUser, logOutUser, getCurrentUser } = require("./controllers/auth.controller")
 const { verifyOtp, resendForgotPasswordOtp } = require("./controllers/otp.controller")
 const { changePassword, ForgotPassword, ResetPassword } = require("./controllers/password.controller")
 const { emailVerifyToken } = require("./controllers/emailVerifyToken.controller")
@@ -10,6 +10,7 @@ const router = Router()
 // Auth routes
 router.post("/users/login", loginUser)
 router.post("/users/logout", authMiddleware, logOutUser)
+router.get("/auth/me", authMiddleware, getCurrentUser)
 
 // OTP routes
 router.post("/verify", verifyOtp)
