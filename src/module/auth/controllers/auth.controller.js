@@ -1,8 +1,9 @@
 const User = require("../../user/models/User")
 const Role = require("../../rbac/models/Role")
 const bcrypt = require("bcrypt")
-const { createSession, invalidateSession } = require("../../../utils/sessionUtils")
+const { createSession, invalidateSession, getUserActiveSessions } = require("../../../utils/sessionUtils")
 const { parseDeviceInfo } = require("../../../utils/deviceUtils")
+const { generateAccessToken, verifyAccessToken } = require("../../../utils/jwtUtils")
 
 const loginUser = async (req, res) => {
   try {
@@ -43,6 +44,8 @@ const loginUser = async (req, res) => {
     // Create new session (this will automatically handle session limit)
     const sessionId = await createSession(user._id, deviceInfo)
 
+    const accessToken = generateAccessToken(user._id, sessionId)
+
     // Update user status
     user.isLoggedIn = true
     user.status = "active"
@@ -54,6 +57,7 @@ const loginUser = async (req, res) => {
       message: "Login successful!",
       user: userResponse,
       sessionId,
+      accessToken,
     })
   } catch (err) {
     res.status(500).json({ message: "Internal server error" })
@@ -65,6 +69,30 @@ const logOutUser = async (req, res) => {
     const sessionId = req.sessionId
     const userId = req.userId
 
+    // Check if Authorization header with JWT token is provided
+    const authHeader = req.headers.authorization
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      const token = authHeader.substring(7)
+
+      try {
+        const decoded = verifyAccessToken(token)
+
+        // Verify that JWT token matches the current session
+        if (decoded.sessionId !== sessionId) {
+          return res.status(401).json({ message: "JWT token does not match current session" })
+        }
+
+        // Verify that JWT user matches session user
+        if (decoded.userId !== userId.toString()) {
+          return res.status(401).json({ message: "JWT token user does not match session user" })
+        }
+
+        console.log("JWT token validated successfully during logout")
+      } catch (jwtError) {
+        return res.status(401).json({ message: "Invalid JWT token provided for logout" })
+      }
+    }
+
     // Invalidate current session
     if (sessionId) {
       await invalidateSession(sessionId)
@@ -75,7 +103,6 @@ const logOutUser = async (req, res) => {
       const user = await User.findById(userId)
       if (user) {
         // Check if user has other active sessions
-        const { getUserActiveSessions } = require("../../../utils/sessionUtils")
         const activeSessions = await getUserActiveSessions(userId)
 
         if (activeSessions.length === 0) {
@@ -108,6 +135,7 @@ const getCurrentUser = async (req, res) => {
       message: "Session valid",
       user: userData,
       sessionId: req.sessionId,
+      accessToken: req.accessToken,
     })
   } catch (err) {
     res.status(500).json({ message: "Internal server error" })

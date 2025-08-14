@@ -1,5 +1,6 @@
 const { v4: uuidv4 } = require("uuid")
 const Session = require("../module/auth/models/Session")
+const { generateAccessToken } = require("./jwtUtils")
 
 const MAX_SESSIONS_PER_USER = 2
 
@@ -27,10 +28,14 @@ const createSession = async (userId, deviceInfo = {}) => {
 
   await Session.deleteMany({ userId, isActive: false })
 
-  // Create new session
+  // Generate JWT access token
+  const accessToken = generateAccessToken(userId, sessionId)
+
+  // Create new session with access token
   const session = new Session({
     sessionId,
     userId,
+    accessToken,
     deviceInfo,
     expiresAt,
   })

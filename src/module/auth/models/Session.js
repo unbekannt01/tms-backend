@@ -12,6 +12,10 @@ const sessionSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+    accessToken: {
+      type: String,
+      required: false,
+    },
     deviceInfo: {
       userAgent: String,
       ip: String,
