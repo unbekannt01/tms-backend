@@ -15,8 +15,8 @@ const sessionAuthMiddleware = require("../../middleware/sessionAuth")
 
 const router = Router()
 
-router.post("/users/register", sessionAuthMiddleware, createUser)
-router.post("/users/v2/register", sessionAuthMiddleware, createUserWithEmailToken)
+router.post("/users/register", createUser)
+router.post("/users/v2/register", createUserWithEmailToken)
 
 // Specific GET routes first
 router.get("/users/activity", sessionAuthMiddleware, getUsersByActivity)
