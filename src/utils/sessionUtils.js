@@ -1,7 +1,7 @@
 const { v4: uuidv4 } = require("uuid")
 const Session = require("../module/auth/models/Session")
 
-const MAX_SESSIONS_PER_USER = 5
+const MAX_SESSIONS_PER_USER = 2
 
 const generateSessionId = () => {
   return uuidv4()
@@ -9,7 +9,7 @@ const generateSessionId = () => {
 
 const createSession = async (userId, deviceInfo = {}) => {
   const sessionId = generateSessionId()
-  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
+  const expiresAt = new Date(Date.now() + 1 * 60 * 60 * 1000)
 
   // Check current active sessions for this user
   const activeSessions = await Session.find({
@@ -18,13 +18,14 @@ const createSession = async (userId, deviceInfo = {}) => {
     expiresAt: { $gt: new Date() },
   }).sort({ lastActivity: -1 })
 
-  // If user has reached max sessions, deactivate the oldest ones
   if (activeSessions.length >= MAX_SESSIONS_PER_USER) {
-    const sessionsToDeactivate = activeSessions.slice(MAX_SESSIONS_PER_USER - 1)
-    const sessionIdsToDeactivate = sessionsToDeactivate.map((s) => s.sessionId)
+    const sessionsToDelete = activeSessions.slice(MAX_SESSIONS_PER_USER - 1)
+    const sessionIdsToDelete = sessionsToDelete.map((s) => s.sessionId)
 
-    await Session.updateMany({ sessionId: { $in: sessionIdsToDeactivate } }, { isActive: false })
+    await Session.deleteMany({ sessionId: { $in: sessionIdsToDelete } })
   }
+
+  await Session.deleteMany({ userId, isActive: false })
 
   // Create new session
   const session = new Session({
@@ -57,22 +58,19 @@ const validateSession = async (sessionId) => {
 }
 
 const invalidateSession = async (sessionId) => {
-  await Session.findOneAndUpdate({ sessionId }, { isActive: false })
+  await Session.findOneAndDelete({ sessionId })
 }
 
 const invalidateAllUserSessions = async (userId) => {
-  await Session.updateMany({ userId, isActive: true }, { isActive: false })
+  await Session.deleteMany({ userId, isActive: true })
 }
 
 const invalidateOtherUserSessions = async (userId, currentSessionId) => {
-  await Session.updateMany(
-    {
-      userId,
-      isActive: true,
-      sessionId: { $ne: currentSessionId },
-    },
-    { isActive: false },
-  )
+  await Session.deleteMany({
+    userId,
+    isActive: true,
+    sessionId: { $ne: currentSessionId },
+  })
 }
 
 const getUserActiveSessions = async (userId) => {
@@ -83,6 +81,20 @@ const getUserActiveSessions = async (userId) => {
   }).sort({ lastActivity: -1 })
 }
 
+const deleteSession = async (sessionId) => {
+  await Session.findOneAndDelete({ sessionId })
+}
+
+const deleteAllUserSessions = async (userId) => {
+  await Session.deleteMany({ userId })
+}
+
+const cleanupExpiredSessions = async () => {
+  await Session.deleteMany({
+    $or: [{ expiresAt: { $lt: new Date() } }, { isActive: false }],
+  })
+}
+
 module.exports = {
   generateSessionId,
   createSession,
@@ -91,5 +103,8 @@ module.exports = {
   invalidateAllUserSessions,
   invalidateOtherUserSessions,
   getUserActiveSessions,
+  deleteSession,
+  deleteAllUserSessions,
+  cleanupExpiredSessions,
   MAX_SESSIONS_PER_USER,
 }
