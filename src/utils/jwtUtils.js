@@ -7,14 +7,14 @@ const generateAccessToken = (userId, sessionId) => {
     type: "access_token",
   }
 
-  return jwt.sign(payload, process.env.JWT_SECRET_KEY_FOR_TOKEN, {
-    expiresIn: process.env.JWT_EXPIRES_IN_FOR_TOKEN || "1h",
+  return jwt.sign(payload, process.env.JWT_SECRET_KEY, {
+    expiresIn: process.env.JWT_EXPIRES_IN || "1h",
   })
 }
 
 const verifyAccessToken = (token) => {
   try {
-    return jwt.verify(token, process.env.JWT_SECRET_KEY_FOR_TOKEN)
+    return jwt.verify(token, process.env.JWT_SECRET_KEY)
   } catch (error) {
     return null
   }
