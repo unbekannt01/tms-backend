@@ -22,6 +22,30 @@ const getActiveSessions = async (req, res) => {
   }
 }
 
+const getAllActiveSessionsController = async (req, res) => {
+  try {
+    const sessions = await getAllActiveSessions();
+
+    const sessionData = sessions.map((session) => ({
+      sessionId: session.sessionId,
+      userId: session.userId?._id,
+      userEmail: session.userId?.email,
+      deviceInfo: session.deviceInfo,
+      lastActivity: session.lastActivity,
+      createdAt: session.createdAt,
+      isCurrent: session.sessionId === req.sessionId,
+    }));
+
+    res.json({
+      message: "All active sessions retrieved successfully",
+      sessions: sessionData,
+      maxSessions: MAX_SESSIONS_PER_USER, // optional, might not apply for admin
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
 const terminateSession = async (req, res) => {
   try {
     const { sessionId } = req.params
@@ -61,4 +85,5 @@ module.exports = {
   getActiveSessions,
   terminateSession,
   checkSession,
+  getAllActiveSessionsController
 }

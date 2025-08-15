@@ -20,6 +20,7 @@ const {
   getActiveSessions,
   terminateSession,
   checkSession,
+  getAllActiveSessionsController,
 } = require("./controllers/session.controller");
 const sessionAuthMiddleware = require("../../middleware/sessionAuth");
 const {
@@ -50,5 +51,6 @@ router.post(
 router.get("/sessions", sessionAuthMiddleware, getActiveSessions);
 router.delete("/sessions/:sessionId", sessionAuthMiddleware, terminateSession);
 router.get("/session/check", sessionAuthMiddleware, checkSession);
+router.get("/allSession", sessionAuthMiddleware, getAllActiveSessionsController);
 
 module.exports = router;
