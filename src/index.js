@@ -14,6 +14,7 @@ app.use(
   cors({
     origin: [
       "http://localhost:3000",
+      "http://192.168.1.34:3000",
       process.env.FRONTEND_URL,
       /\.render\.com$/,
       /\.vercel\.app$/
