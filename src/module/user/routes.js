@@ -27,7 +27,7 @@ router.get("/users", sessionAuthMiddleware, getUser)
 
 // Generic param routes last
 router.get("/users/:id", sessionAuthMiddleware, getUserById)
-router.put("/users/:id", sessionAuthMiddleware, updateUser)
+router.put("/users", sessionAuthMiddleware, updateUser)
 router.delete("/users/:id", sessionAuthMiddleware, deleteUser)
 
 module.exports = router

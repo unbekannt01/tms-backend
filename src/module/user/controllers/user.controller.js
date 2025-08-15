@@ -223,7 +223,7 @@ const getUserById = async (req, res) => {
 
 const updateUser = async (req, res) => {
   try {
-    const { id } = req.params
+    const id = req.userId
     const { password, ...updateData } = req.body
 
     const user = await User.findByIdAndUpdate(id, updateData, {
