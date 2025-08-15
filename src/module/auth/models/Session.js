@@ -1,21 +1,18 @@
-const mongoose = require("mongoose")
+const mongoose = require("mongoose");
 
 const sessionSchema = new mongoose.Schema(
   {
     sessionId: {
       type: String,
       required: true,
-      unique: true,
+      unique: true, // creates the index already
     },
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
     },
-    accessToken: {
-      type: String,
-      required: false,
-    },
+    accessToken: String,
     deviceInfo: {
       userAgent: String,
       ip: String,
@@ -38,14 +35,13 @@ const sessionSchema = new mongoose.Schema(
   {
     timestamps: true,
     collection: "sessions",
-  },
-)
+  }
+);
 
-// Auto-delete expired sessions
-sessionSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 })
+// TTL index
+sessionSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
-// Index for better query performance
-sessionSchema.index({ userId: 1, isActive: 1 })
-sessionSchema.index({ sessionId: 1 })
+// Compound index
+sessionSchema.index({ userId: 1, isActive: 1 });
 
-module.exports = mongoose.model("Session", sessionSchema)
+module.exports = mongoose.model("Session", sessionSchema);
