@@ -21,6 +21,7 @@
     "jsonwebtoken": "^9.0.2",
     "mongodb": "^5.9.2",
     "mongoose": "^8.17.1",
+    "node-cron": "^4.2.1",
     "nodemailer": "^7.0.5",
     "redis": "^4.7.1",
     "reflect-metadata": "^0.1.13",

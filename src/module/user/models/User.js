@@ -55,12 +55,20 @@ const userSchema = new mongoose.Schema(
       enum: ["active", "inactive"],
       default: "inactive",
     },
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
+    deletedAt: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,
     collection: "user_1",
-  },
-)
+  }
+);
 
 // Virtual for user's books
 userSchema.virtual("books", {

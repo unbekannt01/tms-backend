@@ -5,6 +5,8 @@ const connectDB = require("./config/database");
 const { initializeModules } = require("./module");
 const { globalLimiter, apiLimiter } = require("./middleware/rateLimiter");
 
+require("./cron/deleteUsers.cron")
+
 const app = express();
 
 // Trust proxy (important for express-rate-limit behind Render/Vercel/Heroku/Nginx)

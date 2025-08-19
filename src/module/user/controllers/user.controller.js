@@ -1,35 +1,40 @@
-const User = require("../models/User")
-const Role = require("../../rbac/models/Role")
-const Book = require("../../book/models/Book")
-const EmailToken = require("../../auth/models/EmailToken")
-const bcrypt = require("bcrypt")
-const jwt = require("jsonwebtoken")
-const { v4: uuidv4 } = require("uuid")
-const mongoose = require("mongoose")
-const redis = require("../../../redisClient")
+const User = require("../models/User");
+const Role = require("../../rbac/models/Role");
+const Book = require("../../book/models/Book");
+const EmailToken = require("../../auth/models/EmailToken");
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
+const { v4: uuidv4 } = require("uuid");
+const mongoose = require("mongoose");
+const redis = require("../../../redisClient");
 
-const config = require("../../../config/config")
-const { EmailServiceForToken } = require("../services/emailTokenService")
+const config = require("../../../config/config");
+const { EmailServiceForToken } = require("../services/emailTokenService");
 
-const emailServiceForToken = new EmailServiceForToken()
+const emailServiceForToken = new EmailServiceForToken();
 
 const createUser = async (req, res) => {
   try {
-    const { firstName, lastName, userName, email, password, age } = req.body
+    const { firstName, lastName, userName, email, password, age } = req.body;
 
     // Check if user already exists
     const existingUser = await User.findOne({
-      $or: [{ email: email.toLowerCase() }, { userName: userName.toLowerCase() }],
-    })
+      $or: [
+        { email: email.toLowerCase() },
+        { userName: userName.toLowerCase() },
+      ],
+    });
 
     if (existingUser) {
-      return res.status(409).json({ message: "User with this email or username already exists" })
+      return res
+        .status(409)
+        .json({ message: "User with this email or username already exists" });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10)
+    const hashedPassword = await bcrypt.hash(password, 10);
 
     // Get admin user role instead of default "user"
-    const userRole = await Role.findOne({ name: "user" })
+    const userRole = await Role.findOne({ name: "user" });
 
     const user = new User({
       firstName,
@@ -40,54 +45,57 @@ const createUser = async (req, res) => {
       age,
       isVerified: true,
       roleId: userRole ? userRole._id : null,
-    })
+    });
 
-    const savedUser = await user.save()
-    await savedUser.populate("roleId")
+    const savedUser = await user.save();
+    await savedUser.populate("roleId");
 
-    const { password: _, ...userResponse } = savedUser.toObject()
+    const { password: _, ...userResponse } = savedUser.toObject();
 
     res.status(201).json({
       message: "User Created Successfully!",
       user: userResponse,
-    })
+    });
   } catch (err) {
-    console.error("Create user error:", err)
-    res.status(500).json({ message: "Internal server error" })
+    console.error("Create user error:", err);
+    res.status(500).json({ message: "Internal server error" });
   }
-}
+};
 
 const createUsers = async (req, res) => {
   try {
-    let usersData = req.body
+    let usersData = req.body;
 
     if (!Array.isArray(usersData)) {
-      usersData = [usersData]
+      usersData = [usersData];
     }
 
     // Get default user role
-    const defaultRole = await Role.findOne({ name: "user" })
+    const defaultRole = await Role.findOne({ name: "user" });
 
-    const savedUsers = []
-    const errors = []
+    const savedUsers = [];
+    const errors = [];
 
     for (const userData of usersData) {
-      const { firstName, lastName, userName, email, password, age } = userData
+      const { firstName, lastName, userName, email, password, age } = userData;
 
       const existingUser = await User.findOne({
-        $or: [{ email: email.toLowerCase() }, { userName: userName.toLowerCase() }],
-      })
+        $or: [
+          { email: email.toLowerCase() },
+          { userName: userName.toLowerCase() },
+        ],
+      });
 
       if (existingUser) {
         errors.push({
           email,
           userName,
           message: "User with this email or username already exists",
-        })
-        continue
+        });
+        continue;
       }
 
-      const hashedPassword = await bcrypt.hash(password, 10)
+      const hashedPassword = await bcrypt.hash(password, 10);
 
       const user = new User({
         firstName,
@@ -98,44 +106,47 @@ const createUsers = async (req, res) => {
         age,
         isVerified: true,
         roleId: defaultRole ? defaultRole._id : null,
-      })
+      });
 
-      const savedUser = await user.save()
-      await savedUser.populate("roleId")
+      const savedUser = await user.save();
+      await savedUser.populate("roleId");
 
-      const { password: _, ...userResponse } = savedUser.toObject()
-      savedUsers.push(userResponse)
+      const { password: _, ...userResponse } = savedUser.toObject();
+      savedUsers.push(userResponse);
     }
 
     res.status(201).json({
       message: `Processed ${usersData.length} users.`,
       savedUsers,
       errors,
-    })
+    });
   } catch (err) {
-    console.error("Bulk create user error:", err)
-    res.status(500).json({ message: "Internal server error" })
+    console.error("Bulk create user error:", err);
+    res.status(500).json({ message: "Internal server error" });
   }
-}
+};
 
 const createUserWithEmailToken = async (req, res) => {
   try {
-    const { firstName, lastName, userName, email, password, age } = req.body
+    const { firstName, lastName, userName, email, password, age } = req.body;
 
     const existingUser = await User.findOne({
-      $or: [{ email: email.toLowerCase() }, { userName: userName.toLowerCase() }],
-    })
+      $or: [
+        { email: email.toLowerCase() },
+        { userName: userName.toLowerCase() },
+      ],
+    });
 
     if (existingUser) {
       return res.status(409).json({
         message: "User with this email or username already exists",
-      })
+      });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10)
+    const hashedPassword = await bcrypt.hash(password, 10);
 
     // Get default user role
-    const defaultRole = await Role.findOne({ name: "user" })
+    const defaultRole = await Role.findOne({ name: "user" });
 
     const user = new User({
       firstName,
@@ -146,125 +157,236 @@ const createUserWithEmailToken = async (req, res) => {
       age,
       isVerified: false,
       roleId: defaultRole ? defaultRole._id : null,
-    })
+    });
 
-    const savedUser = await user.save()
+    const savedUser = await user.save();
 
-    const token = uuidv4()
-    const tokenExpiration = new Date(Date.now() + config.emailTokenExpiration.emailTokenExpiry)
+    const token = uuidv4();
+    const tokenExpiration = new Date(
+      Date.now() + config.emailTokenExpiration.emailTokenExpiry
+    );
 
     const emailToken = new EmailToken({
       userId: savedUser._id,
       verificationToken: token,
       tokenExpiration: tokenExpiration,
-    })
+    });
 
-    await emailToken.save()
+    await emailToken.save();
 
-    const devLink = `http://localhost:3001/api/v2/verifyEmail/${token}`
-    await emailServiceForToken.sendTokenEmail(savedUser.email, devLink, savedUser.firstName)
+    const devLink = `http://localhost:3001/api/v2/verifyEmail/${token}`;
+    await emailServiceForToken.sendTokenEmail(
+      savedUser.email,
+      devLink,
+      savedUser.firstName
+    );
 
     res.status(201).json({
-      message: "User created successfully! Verification token sent to email (development mode).",
+      message:
+        "User created successfully! Verification token sent to email (development mode).",
       user: savedUser,
-    })
+    });
   } catch (err) {
-    console.error("Create user error:", err)
-    res.status(500).json({ message: "Internal server error" })
+    console.error("Create user error:", err);
+    res.status(500).json({ message: "Internal server error" });
   }
-}
+};
 
 const getUser = async (req, res) => {
   try {
-    const users = await User.find(
-      {},
-      {
-        password: 0,
-      },
-    ).populate("roleId", "name displayName permissions")
-    res.json(users)
+    const users = await User.find({ isDeleted: false })
+      .populate({
+        path: "roleId",
+        select: "name displayName permissions",
+        match: { name: { $ne: "admin" } },
+      });
+
+    const filteredUsers = users.filter(user => user.roleId !== null);
+
+    res.json(filteredUsers);
   } catch (err) {
-    console.error("Get users error:", err)
-    res.status(500).json({ message: "Internal server error" })
+    console.error("Get users error:", err);
+    res.status(500).json({ message: "Internal server error" });
   }
-}
+};
+
+const getAllUser = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+    const roleId = req.query.roleId;
+    const search = req.query.search;
+
+    let filter = {};
+
+    if (roleId) {
+      filter.roleId = roleId;
+    }
+
+    if (search) {
+      filter.$or = [
+        { email: { $regex: search, $options: "i" } },
+        { userName: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    // Fetch users
+    let users = await User.find(filter)
+      .populate("roleId", "name displayName") // populate role info
+      .skip(skip)
+      .limit(limit);
+
+    // Exclude only admin role
+    users = users.filter(user => user.roleId?.name !== "admin");
+
+    // Total count (excluding admin)
+    const total = (await User.find(filter).populate("roleId", "name")).filter(
+      user => user.roleId?.name !== "admin"
+    ).length;
+
+    res.json({
+      users,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit),
+      },
+    });
+  } catch (err) {
+    console.error("Get all users error:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
 
 const getUserById = async (req, res) => {
   try {
-    const { id } = req.params
+    const { id } = req.params;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ message: "Invalid user ID format" })
+      return res.status(400).json({ message: "Invalid user ID format" });
     }
 
-    const user = await User.findById(id, { password: 0 }).populate("roleId", "name displayName permissions")
+    const user = await User.findById(id, { password: 0 }).populate(
+      "roleId",
+      "name displayName permissions"
+    );
 
     if (!user) {
-      return res.status(404).json({ message: "User not found" })
+      return res.status(404).json({ message: "User not found" });
     }
 
     const books = await Book.find(
-      { userId: id },
+      { userId: id, isDeleted: false },
       {
         name: 1,
         author: 1,
         price: 1,
-      },
-    )
+      }
+    );
 
-    const userWithBooks = { ...user.toObject(), books }
+    const userWithBooks = { ...user.toObject(), books };
 
-    res.json(userWithBooks)
+    res.json(userWithBooks);
   } catch (err) {
-    console.error("Get user by ID error:", err)
-    res.status(500).json({ message: "Internal server error" })
+    console.error("Get user by ID error:", err);
+    res.status(500).json({ message: "Internal server error" });
   }
-}
+};
 
 const updateUser = async (req, res) => {
   try {
-    const id = req.userId
-    const { password, ...updateData } = req.body
+    const id = req.userId;
+    const { password, ...updateData } = req.body;
 
     const user = await User.findByIdAndUpdate(id, updateData, {
       new: true,
       select: "-password",
-    }).populate("roleId", "name displayName permissions")
+    }).populate("roleId", "name displayName permissions");
 
     if (!user) {
-      return res.status(404).json({ message: "User not found" })
+      return res.status(404).json({ message: "User not found" });
     }
 
     res.json({
       message: "User updated successfully",
       user,
-    })
+    });
   } catch (err) {
-    console.error("Update user error:", err)
-    res.status(500).json({ message: "Internal server error" })
+    console.error("Update user error:", err);
+    res.status(500).json({ message: "Internal server error" });
   }
-}
+};
 
 const deleteUser = async (req, res) => {
   try {
-    const { id } = req.params
+    const { id } = req.params;
 
-    const user = await User.findByIdAndDelete(id)
+    const user = await User.findByIdAndDelete(id);
 
     if (!user) {
-      return res.status(404).json({ message: "User not found" })
+      return res.status(404).json({ message: "User not found" });
     }
 
-    res.json({ message: "User deleted successfully" })
+    res.json({ message: "User deleted successfully" });
   } catch (err) {
-    console.error("Delete user error:", err)
-    res.status(500).json({ message: "Internal server error" })
+    console.error("Delete user error:", err);
+    res.status(500).json({ message: "Internal server error" });
   }
-}
+};
+
+const softDeleteUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const user = await User.findByIdAndUpdate(
+      id,
+      {
+        isDeleted: true,
+        deletedAt: new Date(),
+        status: "inactive",
+        isLoggedIn: false,
+      },
+      { new: true }
+    );
+
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    res.json({
+      message:
+        "User soft deleted. Will be permanently deleted after 30 days unless restored.",
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const restoreSoftDeletedUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const user = await User.findByIdAndUpdate(
+      id,
+      {
+        isDeleted: false,
+        deletedAt: null,
+        status: "active",
+      },
+      { new: true }
+    );
+
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    res.json({ message: "User restored successfully", user });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
 
 const getUserWithBooks = async (req, res) => {
   try {
-    const { userId } = req.params
+    const { userId } = req.params;
 
     const result = await User.aggregate([
       { $match: { _id: new mongoose.Types.ObjectId(userId) } },
@@ -285,22 +407,22 @@ const getUserWithBooks = async (req, res) => {
           "books.price": 1,
         },
       },
-    ])
+    ]);
 
-    res.json(result[0] || {})
+    res.json(result[0] || {});
   } catch (error) {
-    console.error("Error in getUserWithBooks:", error)
-    res.status(500).json({ message: "Server Error" })
+    console.error("Error in getUserWithBooks:", error);
+    res.status(500).json({ message: "Server Error" });
   }
-}
+};
 
 const getAllUsersWithBooks = async (req, res) => {
   try {
-    const page = Number.parseInt(req.query.page, 10) || 1
-    const limit = Number.parseInt(req.query.limit, 10) || 10
-    const skip = (page - 1) * limit
+    const page = Number.parseInt(req.query.page, 10) || 1;
+    const limit = Number.parseInt(req.query.limit, 10) || 10;
+    const skip = (page - 1) * limit;
 
-    const total = await User.countDocuments()
+    const total = await User.countDocuments();
 
     const data = await User.aggregate([
       {
@@ -322,7 +444,7 @@ const getAllUsersWithBooks = async (req, res) => {
       },
       { $skip: skip },
       { $limit: limit },
-    ])
+    ]);
 
     res.json({
       page,
@@ -330,16 +452,22 @@ const getAllUsersWithBooks = async (req, res) => {
       total,
       totalPages: Math.ceil(total / limit),
       data,
-    })
+    });
   } catch (error) {
-    console.error("Error in getAllUsersWithBooks:", error)
-    res.status(500).json({ message: "Server Error" })
+    console.error("Error in getAllUsersWithBooks:", error);
+    res.status(500).json({ message: "Server Error" });
   }
-}
+};
 
 const getUsersByActivity = async (req, res) => {
   try {
-    const { activityLevel = "all", minBooks = 0, maxBooks = 1000, sortBy = "bookCount", sortOrder = "desc" } = req.query
+    const {
+      activityLevel = "all",
+      minBooks = 0,
+      maxBooks = 1000,
+      sortBy = "bookCount",
+      sortOrder = "desc",
+    } = req.query;
 
     const pipeline = [
       {
@@ -384,10 +512,10 @@ const getUsersByActivity = async (req, res) => {
           },
         },
       },
-    ]
+    ];
 
     if (activityLevel !== "all") {
-      pipeline.push({ $match: { activityScore: activityLevel } })
+      pipeline.push({ $match: { activityScore: activityLevel } });
     }
 
     pipeline.push({
@@ -397,11 +525,11 @@ const getUsersByActivity = async (req, res) => {
           $lte: Number.parseInt(maxBooks),
         },
       },
-    })
+    });
 
-    const sortObj = {}
-    sortObj[sortBy] = sortOrder === "desc" ? -1 : 1
-    pipeline.push({ $sort: sortObj })
+    const sortObj = {};
+    sortObj[sortBy] = sortOrder === "desc" ? -1 : 1;
+    pipeline.push({ $sort: sortObj });
 
     pipeline.push({
       $project: {
@@ -419,24 +547,24 @@ const getUsersByActivity = async (req, res) => {
         isLoggedIn: 1,
         preferredAuthors: { $slice: ["$preferredAuthors", 5] },
       },
-    })
+    });
 
-    const result = await User.aggregate(pipeline)
+    const result = await User.aggregate(pipeline);
 
     res.json({
       message: "Users by activity retrieved successfully",
       count: result.length,
       users: result,
-    })
+    });
   } catch (error) {
-    console.error("Error in getUsersByActivity:", error)
-    res.status(500).json({ message: "Server Error" })
+    console.error("Error in getUsersByActivity:", error);
+    res.status(500).json({ message: "Server Error" });
   }
-}
+};
 
 const getUserPreferences = async (req, res) => {
   try {
-    const { userId } = req.params
+    const { userId } = req.params;
 
     const pipeline = [
       { $match: { _id: new mongoose.Types.ObjectId(userId) } },
@@ -526,23 +654,23 @@ const getUserPreferences = async (req, res) => {
           recentBooksCount: 1,
         },
       },
-    ]
+    ];
 
-    const result = await User.aggregate(pipeline)
+    const result = await User.aggregate(pipeline);
 
     if (!result.length) {
-      return res.status(404).json({ message: "User not found" })
+      return res.status(404).json({ message: "User not found" });
     }
 
     res.json({
       message: "User preferences retrieved successfully",
       preferences: result[0],
-    })
+    });
   } catch (error) {
-    console.error("Error in getUserPreferences:", error)
-    res.status(500).json({ message: "Server Error" })
+    console.error("Error in getUserPreferences:", error);
+    res.status(500).json({ message: "Server Error" });
   }
-}
+};
 
 module.exports = {
   createUser,
@@ -556,4 +684,7 @@ module.exports = {
   getAllUsersWithBooks,
   getUsersByActivity,
   getUserPreferences,
-}
+  softDeleteUser,
+  restoreSoftDeletedUser,
+  getAllUser,
+};

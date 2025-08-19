@@ -50,7 +50,6 @@ const terminateSession = async (req, res) => {
   try {
     const { sessionId } = req.params
 
-    // Don't allow terminating current session
     if (sessionId === req.sessionId) {
       return res.status(400).json({
         message: "Cannot terminate current session. Use logout instead.",
