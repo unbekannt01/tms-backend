@@ -50,9 +50,9 @@ const startServer = async () => {
   try {
     await connectDB();
     app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`); // <-- no localhost
+      console.log(`Server running on port ${PORT}`);
       if (process.env.PORT) {
-        console.log(`Public URL: ${process.env.FRONTEND_HOST_URL || "Check Railway domain"}`);
+        console.log(`Public URL: ${process.env.FRONTEND_URL || "Check Railway domain"}`);
       }
     });
   } catch (error) {
