@@ -7,7 +7,6 @@ const jwt = require("jsonwebtoken");
 const { v4: uuidv4 } = require("uuid");
 const mongoose = require("mongoose");
 const redis = require("../../../redisClient");
-
 const config = require("../../../config/config");
 const { EmailServiceForToken } = require("../services/emailTokenService");
 
@@ -194,14 +193,13 @@ const createUserWithEmailToken = async (req, res) => {
 
 const getUser = async (req, res) => {
   try {
-    const users = await User.find({ isDeleted: false })
-      .populate({
-        path: "roleId",
-        select: "name displayName permissions",
-        match: { name: { $ne: "admin" } },
-      });
+    const users = await User.find({ isDeleted: false }).populate({
+      path: "roleId",
+      select: "name displayName permissions",
+      match: { name: { $ne: "admin" } },
+    });
 
-    const filteredUsers = users.filter(user => user.roleId !== null);
+    const filteredUsers = users.filter((user) => user.roleId !== null);
 
     res.json(filteredUsers);
   } catch (err) {
@@ -231,19 +229,22 @@ const getAllUser = async (req, res) => {
       ];
     }
 
-    // Fetch users
-    let users = await User.find(filter)
-      .populate("roleId", "name displayName") // populate role info
+    // Find admin role id
+    const adminRole = await Role.findOne({ name: "admin" });
+    if (adminRole) {
+      filter.roleId = filter.roleId
+        ? { $eq: filter.roleId, $ne: adminRole._id }
+        : { $ne: adminRole._id };
+    }
+
+    // Fetch users with pagination
+    const users = await User.find(filter)
+      .populate("roleId", "name displayName")
       .skip(skip)
       .limit(limit);
 
-    // Exclude only admin role
-    users = users.filter(user => user.roleId?.name !== "admin");
-
     // Total count (excluding admin)
-    const total = (await User.find(filter).populate("roleId", "name")).filter(
-      user => user.roleId?.name !== "admin"
-    ).length;
+    const total = await User.countDocuments(filter);
 
     res.json({
       users,
