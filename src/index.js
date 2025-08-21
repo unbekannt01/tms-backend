@@ -4,8 +4,9 @@ const cors = require("cors");
 const connectDB = require("./config/database");
 const { initializeModules } = require("./module");
 const { globalLimiter, apiLimiter } = require("./middleware/rateLimiter");
+const config = require("./config/config");
 
-require("./cron/deleteUsers.cron")
+require("./cron/deleteUsers.cron");
 
 const app = express();
 
@@ -19,9 +20,9 @@ app.use(globalLimiter);
 app.use(
   cors({
     origin: [
-      process.env.FRONTEND_LOCAL_URL,
-      process.env.FRONTEND_HOST_URL,
-      process.env.FRONTEND_URL,
+      config.url.frontend_local_url,
+      config.url.frontend_host_url,
+      config.url.frontend_url,
       /\.render\.com$/,
       /\.vercel\.app$/,
     ].filter(Boolean),
@@ -52,7 +53,9 @@ const startServer = async () => {
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
       if (process.env.PORT) {
-        console.log(`Public URL: ${process.env.FRONTEND_URL || "Check Railway domain"}`);
+        console.log(
+          `Public URL: ${process.env.FRONTEND_URL || "Check Railway domain"}`
+        );
       }
     });
   } catch (error) {

@@ -32,7 +32,13 @@ module.exports = {
     pass: process.env.SMTP_PASS,
     secure: process.env.SMTP_SECURE === "true",
   },
-  emailTokenExpiration : {
-    emailTokenExpiry : parseInt(process.env.EMAIL_VERIFICATION_TOKEN_EXPIRATION_MS) || 86400000,
-  }
+  emailTokenExpiration: {
+    emailTokenExpiry:
+      parseInt(process.env.EMAIL_VERIFICATION_TOKEN_EXPIRATION_MS) || 86400000,
+  },
+  url: {
+    frontend_local_url: process.env.FRONTEND_LOCAL_URL,
+    frontend_host_url: process.env.FRONTEND_HOST_URL,
+    frontend_url: process.env.FRONTEND_URL,
+  },
 };
