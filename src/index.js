@@ -20,9 +20,9 @@ app.use(globalLimiter);
 app.use(
   cors({
     origin: [
-      config.url.frontend_local_url,
-      config.url.frontend_host_url,
-      config.url.frontend_url,
+      process.env.FRONTEND_LOCAL_URL,
+      process.env.FRONTEND_HOST_URL,
+      process.env.FRONTEND_URL,
       /\.render\.com$/,
       /\.vercel\.app$/,
     ].filter(Boolean),
