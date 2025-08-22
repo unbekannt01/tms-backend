@@ -1,6 +1,9 @@
 const Task = require("../models/Task")
 const User = require("../../user/models/User")
+const Notification = require("../../notification/models/Notification")
 const PermissionService = require("../../rbac/services/permissionService")
+const emailService = require("../../../services/emailService")
+const realTimeNotificationService = require("../../../services/realTimeNotificationService")
 const mongoose = require("mongoose")
 
 const createTask = async (req, res) => {
@@ -32,6 +35,32 @@ const createTask = async (req, res) => {
       { path: "assignedTo", select: "firstName lastName userName email" },
       { path: "createdBy", select: "firstName lastName userName email" },
     ])
+
+    // Only send notifications if task is assigned to someone other than the creator
+    if (savedTask.assignedTo._id.toString() !== currentUser._id.toString()) {
+      try {
+        // Create and broadcast real-time notification
+        await realTimeNotificationService.broadcastTaskAssignment(
+          savedTask,
+          savedTask.createdBy,
+          savedTask.assignedTo._id,
+        )
+
+        // Send email notification
+        const emailResult = await emailService.sendTaskAssignmentEmail(
+          savedTask,
+          savedTask.createdBy,
+          savedTask.assignedTo,
+        )
+
+        if (emailResult.success) {
+          console.log(`[v0] Task assignment email sent to ${savedTask.assignedTo.email}`)
+        }
+      } catch (notificationError) {
+        console.error("[v0] Failed to create task assignment notification:", notificationError)
+        // Don't fail the task creation if notification fails
+      }
+    }
 
     res.status(201).json({
       message: "Task created successfully",
@@ -139,17 +168,25 @@ const updateTask = async (req, res) => {
     const currentUser = req.user
     const updateData = req.body
 
-    const task = await Task.findById(id)
+    const task = await Task.findById(id).populate([
+      { path: "assignedTo", select: "firstName lastName userName email" },
+      { path: "createdBy", select: "firstName lastName userName email" },
+    ])
+
     if (!task) {
       return res.status(404).json({ message: "Task not found" })
     }
+
+    // Store original values for comparison
+    const originalAssignedTo = task.assignedTo._id.toString()
+    const originalStatus = task.status
 
     // Check permissions
     const canUpdateAll = await PermissionService.hasPermission(currentUser, "task:update:all")
     const canUpdateTeam = await PermissionService.hasPermission(currentUser, "task:update:team")
     const canUpdateOwn = await PermissionService.hasPermission(currentUser, "task:update:own")
-    const isOwner = task.assignedTo.toString() === currentUser._id.toString()
-    const isCreator = task.createdBy.toString() === currentUser._id.toString()
+    const isOwner = task.assignedTo._id.toString() === currentUser._id.toString()
+    const isCreator = task.createdBy._id.toString() === currentUser._id.toString()
 
     let canUpdate = false
     if (canUpdateAll) {
@@ -172,6 +209,34 @@ const updateTask = async (req, res) => {
     const updatedTask = await Task.findByIdAndUpdate(id, updateData, { new: true })
       .populate("assignedTo", "firstName lastName userName email")
       .populate("createdBy", "firstName lastName userName email")
+
+    try {
+      // Check if task was reassigned to a different user
+      if (updateData.assignedTo && updateData.assignedTo !== originalAssignedTo) {
+        const newAssignee = await User.findById(updateData.assignedTo).select("firstName lastName userName email")
+
+        if (newAssignee && newAssignee._id.toString() !== currentUser._id.toString()) {
+          // Broadcast task reassignment
+          await realTimeNotificationService.broadcastTaskAssignment(updatedTask, currentUser, newAssignee._id)
+
+          // Send email notification
+          const emailResult = await emailService.sendTaskAssignmentEmail(updatedTask, currentUser, newAssignee)
+
+          console.log(`[v0] Task reassignment notification created for user ${newAssignee._id}`)
+        }
+      }
+
+      // Check if task was completed
+      if (updateData.status === "completed" && originalStatus !== "completed") {
+        await realTimeNotificationService.broadcastTaskUpdate(updatedTask, currentUser, "completed")
+      } else if (updateData.status && updateData.status !== originalStatus) {
+        // Broadcast general task update
+        await realTimeNotificationService.broadcastTaskUpdate(updatedTask, currentUser, "updated")
+      }
+    } catch (notificationError) {
+      console.error("[v0] Failed to create task update notification:", notificationError)
+      // Don't fail the task update if notification fails
+    }
 
     res.json({
       message: "Task updated successfully",
@@ -227,7 +292,11 @@ const addComment = async (req, res) => {
     const { text } = req.body
     const currentUser = req.user
 
-    const task = await Task.findById(id)
+    const task = await Task.findById(id).populate([
+      { path: "assignedTo", select: "firstName lastName userName email" },
+      { path: "createdBy", select: "firstName lastName userName email" },
+    ])
+
     if (!task) {
       return res.status(404).json({ message: "Task not found" })
     }
@@ -235,8 +304,8 @@ const addComment = async (req, res) => {
     // Check if user can view the task (same logic as getTaskById)
     const canViewAll = await PermissionService.hasPermission(currentUser, "task:read:all")
     const canViewTeam = await PermissionService.hasPermission(currentUser, "task:read:team")
-    const isOwner = task.assignedTo.toString() === currentUser._id.toString()
-    const isCreator = task.createdBy.toString() === currentUser._id.toString()
+    const isOwner = task.assignedTo._id.toString() === currentUser._id.toString()
+    const isCreator = task.createdBy._id.toString() === currentUser._id.toString()
 
     if (!canViewAll && !canViewTeam && !isOwner && !isCreator) {
       return res.status(403).json({ message: "You don't have permission to comment on this task" })
@@ -249,6 +318,14 @@ const addComment = async (req, res) => {
 
     await task.save()
     await task.populate("comments.author", "firstName lastName userName")
+
+    try {
+      // Broadcast comment in real-time
+      await realTimeNotificationService.broadcastTaskComment(task, currentUser, text)
+    } catch (notificationError) {
+      console.error("[v0] Failed to create comment notification:", notificationError)
+      // Don't fail the comment addition if notification fails
+    }
 
     res.json({
       message: "Comment added successfully",
