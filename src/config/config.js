@@ -40,5 +40,6 @@ module.exports = {
     frontend_local_url: process.env.FRONTEND_LOCAL_URL,
     frontend_host_url: process.env.FRONTEND_HOST_URL,
     frontend_url: process.env.FRONTEND_URL,
+    dev_link: process.env.DEV_LINK
   },
 };

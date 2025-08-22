@@ -173,10 +173,9 @@ const createUserWithEmailToken = async (req, res) => {
 
     await emailToken.save();
 
-    const devLink = `http://localhost:3001/api/v2/verifyEmail/${token}`;
     await emailServiceForToken.sendTokenEmail(
       savedUser.email,
-      devLink,
+      token,
       savedUser.firstName
     );
 

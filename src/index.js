@@ -39,6 +39,10 @@ app.use("/api", apiLimiter);
 // Routes
 initializeModules(app);
 
+app.get("/", (req, res) => {
+  res.send("🚀 Server is running successfully");
+});
+
 // 404 Handler
 app.use("*", (req, res) => {
   res.status(404).json({ message: "Route not found" });
