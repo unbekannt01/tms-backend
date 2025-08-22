@@ -15,7 +15,6 @@ const {
 } = require("./controllers/password.controller");
 const {
   emailVerifyToken,
-  resendEmailVerification,
 } = require("./controllers/emailVerifyToken.controller");
 const {
   getActiveSessions,
@@ -28,6 +27,9 @@ const {
   authLimiter,
   sensitiveOperationsLimiter,
 } = require("../../middleware/rateLimiter");
+const {
+  resendEmailVerification,
+} = require("./controllers/resendEmailVerification.controller");
 
 const router = Router();
 
