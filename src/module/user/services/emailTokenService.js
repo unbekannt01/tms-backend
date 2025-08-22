@@ -43,21 +43,15 @@ class EmailServiceForToken {
                 <tr>
                   <td>
                     <!-- Header Section -->
-                    <div style="background: #ffffff; border-radius: 16px 16px 0 0; padding: 40px 30px 30px; text-align: center; position: relative; overflow: hidden;">
-                      <div style="position: absolute; top: -50px; right: -50px; width: 100px; height: 100px; background: rgba(102, 126, 234, 0.1); border-radius: 50%;"></div>
-                      <div style="position: absolute; bottom: -30px; left: -30px; width: 60px; height: 60px; background: rgba(118, 75, 162, 0.1); border-radius: 50%;"></div>
-                      
-                      <!-- TMS Logo/Icon -->
-                      <div style="background: linear-gradient(135deg, #667eea, #764ba2); width: 80px; height: 80px; border-radius: 20px; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center; position: relative; z-index: 1;">
-                        <div style="color: white; font-size: 32px; font-weight: bold;">📋</div>
-                      </div>
-                      
-                      <h1 style="color: #2d3748; margin: 0 0 10px; font-size: 28px; font-weight: 700; letter-spacing: -0.5px;">
-                        Welcome to <span style="background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">TMS</span>
-                      </h1>
+                      <div style="background: #ffffff; border-radius: 16px 16px 0 0; padding: 20px 30px 20px; text-align: center; position: relative; overflow: hidden;">
+                        <div style="background: linear-gradient(135deg, #667eea, #764ba2); width: 80px; height: 80px; border-radius: 20px; margin: 0 auto 15px; display: flex; align-items: center; justify-content: center; position: relative; z-index: 1;">
+                          <div style="color: white; font-size: 32px; font-weight: bold;">📋</div>
+                        </div>
+                        <h1 style="color: #2d3748; margin: 0 0 5px; font-size: 28px; font-weight: 700; letter-spacing: -0.5px;">
+                          Welcome to <span style="background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">TMS</span>
+                        </h1>
                       <p style="color: #718096; margin: 0; font-size: 16px; font-weight: 500;">Task Management System</p>
                     </div>
-
                     <!-- Main Content -->
                     <div style="background: #ffffff; padding: 40px 30px;">
                       <div style="text-align: center; margin-bottom: 30px;">
