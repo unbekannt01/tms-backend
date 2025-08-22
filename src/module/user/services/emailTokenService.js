@@ -126,14 +126,6 @@ class EmailServiceForToken {
 
                     <!-- Footer -->
                     <div style="background: #2d3748; border-radius: 0 0 16px 16px; padding: 30px; text-align: center;">
-                      <p style="color: #a0aec0; font-size: 14px; margin: 0 0 15px; line-height: 1.5;">
-                        Having trouble with the button? Copy and paste this link:
-                      </p>
-                      <p style="background: #4a5568; padding: 12px; border-radius: 6px; margin: 0 0 20px;">
-                        <a href="${verificationUrl}" style="color: #90cdf4; word-break: break-all; text-decoration: none; font-size: 12px;">
-                          ${verificationUrl}
-                        </a>
-                      </p>
                       <div style="border-top: 1px solid #4a5568; padding-top: 20px;">
                         <p style="color: #718096; font-size: 12px; margin: 0;">
                           © 2024 TMS - Task Management System. All rights reserved.
