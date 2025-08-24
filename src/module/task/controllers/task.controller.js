@@ -2,6 +2,7 @@ const Task = require("../models/Task")
 const User = require("../../user/models/User")
 const PermissionService = require("../../rbac/services/permissionService")
 const emailService = require("../../../services/emailService")
+const aiService = require("../../../services/aiService")
 const mongoose = require("mongoose")
 
 const createTask = async (req, res) => {
@@ -142,6 +143,7 @@ const getTaskById = async (req, res) => {
       .populate("assignedTo", "firstName lastName userName email")
       .populate("createdBy", "firstName lastName userName email")
       .populate("comments.author", "firstName lastName userName")
+      .populate("aiEnhancement.enhancedBy", "firstName lastName userName")
 
     if (!task) {
       return res.status(404).json({ message: "Task not found" })
@@ -373,6 +375,183 @@ const getTaskStats = async (req, res) => {
   }
 }
 
+const enhanceTaskDescription = async (req, res) => {
+  try {
+    const { id } = req.params
+    const currentUser = req.user
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid task ID format" })
+    }
+
+    const task = await Task.findById(id)
+    if (!task) {
+      return res.status(404).json({ message: "Task not found" })
+    }
+
+    // Check permissions - user must be able to update the task
+    const canUpdateAll = await PermissionService.hasPermission(currentUser, "task:update:all")
+    const canUpdateTeam = await PermissionService.hasPermission(currentUser, "task:update:team")
+    const canUpdateOwn = await PermissionService.hasPermission(currentUser, "task:update:own")
+    const isOwner = task.assignedTo.toString() === currentUser._id.toString()
+    const isCreator = task.createdBy.toString() === currentUser._id.toString()
+
+    let canUpdate = false
+    if (canUpdateAll) {
+      canUpdate = true
+    } else if (canUpdateTeam && (isOwner || isCreator)) {
+      canUpdate = true
+    } else if (canUpdateOwn && isOwner) {
+      canUpdate = true
+    }
+
+    if (!canUpdate) {
+      return res.status(403).json({ message: "You don't have permission to enhance this task" })
+    }
+
+    if (!task.description || task.description.trim().length === 0) {
+      return res.status(400).json({ message: "Task must have a description to enhance" })
+    }
+
+    // Generate AI enhancement
+    const enhancementResult = await aiService.enhanceTaskDescription(task.description, task.title, task.priority)
+
+    if (!enhancementResult.success) {
+      return res.status(500).json({
+        message: "Failed to enhance description",
+        error: enhancementResult.error,
+      })
+    }
+
+    // Update task with AI enhancement
+    const updatedTask = await Task.findByIdAndUpdate(
+      id,
+      {
+        aiEnhancement: {
+          originalDescription: task.description,
+          enhancedDescription: enhancementResult.data.enhanced,
+          summary: enhancementResult.data.summary,
+          keyPoints: enhancementResult.data.keyPoints,
+          estimatedComplexity: enhancementResult.data.estimatedComplexity,
+          enhancedAt: new Date(),
+          enhancedBy: currentUser._id,
+        },
+      },
+      { new: true },
+    )
+      .populate("assignedTo", "firstName lastName userName email")
+      .populate("createdBy", "firstName lastName userName email")
+      .populate("aiEnhancement.enhancedBy", "firstName lastName userName")
+
+    res.json({
+      message: "Task description enhanced successfully",
+      task: updatedTask,
+      enhancement: enhancementResult.data,
+    })
+  } catch (error) {
+    console.error("[v0] Enhance task description error:", error)
+    res.status(500).json({ message: "Internal server error" })
+  }
+}
+
+const generateTaskSummary = async (req, res) => {
+  try {
+    const { description } = req.body
+
+    if (!description || description.trim().length === 0) {
+      return res.status(400).json({ message: "Description is required" })
+    }
+
+    const summaryResult = await aiService.generateTaskSummary(description)
+
+    if (!summaryResult.success) {
+      return res.status(500).json({
+        message: "Failed to generate summary",
+        error: summaryResult.error,
+      })
+    }
+
+    res.json({
+      message: "Summary generated successfully",
+      summary: summaryResult.summary,
+    })
+  } catch (error) {
+    console.error("[v0] Generate task summary error:", error)
+    res.status(500).json({ message: "Internal server error" })
+  }
+}
+
+const getImprovementSuggestions = async (req, res) => {
+  try {
+    const { description } = req.body
+
+    if (!description || description.trim().length === 0) {
+      return res.status(400).json({ message: "Description is required" })
+    }
+
+    const suggestionsResult = await aiService.suggestImprovements(description)
+
+    if (!suggestionsResult.success) {
+      return res.status(500).json({
+        message: "Failed to generate suggestions",
+        error: suggestionsResult.error,
+      })
+    }
+
+    res.json({
+      message: "Suggestions generated successfully",
+      suggestions: suggestionsResult.data,
+    })
+  } catch (error) {
+    console.error("[v0] Get improvement suggestions error:", error)
+    res.status(500).json({ message: "Internal server error" })
+  }
+}
+
+const removeAIEnhancement = async (req, res) => {
+  try {
+    const { id } = req.params
+    const currentUser = req.user
+
+    const task = await Task.findById(id)
+    if (!task) {
+      return res.status(404).json({ message: "Task not found" })
+    }
+
+    // Check permissions
+    const canUpdateAll = await PermissionService.hasPermission(currentUser, "task:update:all")
+    const canUpdateTeam = await PermissionService.hasPermission(currentUser, "task:update:team")
+    const canUpdateOwn = await PermissionService.hasPermission(currentUser, "task:update:own")
+    const isOwner = task.assignedTo.toString() === currentUser._id.toString()
+    const isCreator = task.createdBy.toString() === currentUser._id.toString()
+
+    let canUpdate = false
+    if (canUpdateAll) {
+      canUpdate = true
+    } else if (canUpdateTeam && (isOwner || isCreator)) {
+      canUpdate = true
+    } else if (canUpdateOwn && isOwner) {
+      canUpdate = true
+    }
+
+    if (!canUpdate) {
+      return res.status(403).json({ message: "You don't have permission to modify this task" })
+    }
+
+    const updatedTask = await Task.findByIdAndUpdate(id, { $unset: { aiEnhancement: 1 } }, { new: true })
+      .populate("assignedTo", "firstName lastName userName email")
+      .populate("createdBy", "firstName lastName userName email")
+
+    res.json({
+      message: "AI enhancement removed successfully",
+      task: updatedTask,
+    })
+  } catch (error) {
+    console.error("[v0] Remove AI enhancement error:", error)
+    res.status(500).json({ message: "Internal server error" })
+  }
+}
+
 module.exports = {
   createTask,
   getTasks,
@@ -381,4 +560,8 @@ module.exports = {
   deleteTask,
   addComment,
   getTaskStats,
+  enhanceTaskDescription,
+  generateTaskSummary,
+  getImprovementSuggestions,
+  removeAIEnhancement,
 }
