@@ -25,6 +25,7 @@ app.use(
       process.env.FRONTEND_HOST_URL,
       process.env.FRONTEND_URL,
       /\.render\.com$/,
+      /\.railway\.com$/,
       /\.vercel\.app$/,
     ].filter(Boolean),
     credentials: true,
