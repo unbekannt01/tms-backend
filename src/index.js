@@ -47,10 +47,10 @@ app.get("/", (req, res) => {
 
 // Health check endpoint
 app.get("/api/health", (req, res) => {
-  res.json({ 
-    status: "OK", 
+  res.json({
+    status: "OK",
     timestamp: new Date(),
-    emailService: "active"
+    emailService: "active",
   });
 });
 
@@ -65,7 +65,7 @@ const PORT = process.env.PORT || 3001;
 const startServer = async () => {
   try {
     await connectDB();
-    app.listen(PORT, () => {
+    app.listen(PORT, "0.0.0.0", () => {
       console.log(`Server running on port ${PORT}`);
       console.log(`Email service ready for task notifications`);
       if (process.env.PORT) {
