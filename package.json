@@ -28,7 +28,8 @@
     "socket.io": "^4.8.1",
     "typeorm": "^0.3.25",
     "ua-parser-js": "^2.0.4",
-    "uuid": "^11.1.0"
+    "uuid": "^11.1.0",
+    "winston": "^3.17.0"
   },
   "devDependencies": {
     "@types/express": "^5.0.3",
