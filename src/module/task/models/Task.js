@@ -1,4 +1,21 @@
-const mongoose = require("mongoose")
+const mongoose = require("mongoose");
+
+const commentSchema = new mongoose.Schema({
+  text: {
+    type: String,
+    required: true,
+    trim: true,
+  },
+  author: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    required: true,
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now,
+  },
+});
 
 const taskSchema = new mongoose.Schema(
   {
@@ -13,7 +30,7 @@ const taskSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["pending","todo", "in_progress", "completed", "cancelled"],
+      enum: ["pending", "in_progress", "completed", "cancelled"],
       default: "pending",
     },
     priority: {
@@ -21,52 +38,22 @@ const taskSchema = new mongoose.Schema(
       enum: ["low", "medium", "high", "urgent"],
       default: "medium",
     },
-    dueDate: {
-      type: Date,
+    assignedTo: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
     },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
     },
-    assignedTo: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
+    dueDate: {
+      type: Date,
     },
-    teamId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Team",
+    completedAt: {
+      type: Date,
     },
-    tags: [
-      {
-        type: String,
-        trim: true,
-      },
-    ],
-    attachments: [
-      {
-        filename: String,
-        url: String,
-        uploadedAt: {
-          type: Date,
-          default: Date.now,
-        },
-      },
-    ],
-    comments: [
-      {
-        text: String,
-        author: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: "User",
-        },
-        createdAt: {
-          type: Date,
-          default: Date.now,
-        },
-      },
-    ],
     estimatedHours: {
       type: Number,
       min: 0,
@@ -75,19 +62,58 @@ const taskSchema = new mongoose.Schema(
       type: Number,
       min: 0,
     },
-    completedAt: {
+    tags: [{
+      type: String,
+      trim: true,
+    }],
+    comments: [commentSchema],
+    // Email tracking fields
+    dueSoonEmailSent: {
+      type: Boolean,
+      default: false,
+    },
+    dueSoonEmailSentAt: {
+      type: Date,
+    },
+    overdueEmailSent: {
+      type: Boolean,
+      default: false,
+    },
+    overdueEmailSentAt: {
       type: Date,
     },
   },
   {
     timestamps: true,
     collection: "tasks",
-  },
-)
+  }
+);
 
-// Index for better query performance
-taskSchema.index({ assignedTo: 1, status: 1 })
-taskSchema.index({ createdBy: 1 })
-taskSchema.index({ dueDate: 1 })
+// Indexes for better query performance
+taskSchema.index({ assignedTo: 1, status: 1 });
+taskSchema.index({ createdBy: 1 });
+taskSchema.index({ dueDate: 1, status: 1 });
+taskSchema.index({ priority: 1 });
+taskSchema.index({ status: 1 });
+taskSchema.index({ dueDate: 1, dueSoonEmailSent: 1 });
+taskSchema.index({ dueDate: 1, overdueEmailSent: 1 });
 
-module.exports = mongoose.model("Task", taskSchema)
+// Virtual for checking if task is overdue
+taskSchema.virtual("isOverdue").get(function () {
+  return this.dueDate && this.dueDate < new Date() && this.status !== "completed";
+});
+
+// Virtual for days until due
+taskSchema.virtual("daysUntilDue").get(function () {
+  if (!this.dueDate) return null;
+  const now = new Date();
+  const diffTime = this.dueDate - now;
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  return diffDays;
+});
+
+// Ensure virtual fields are serialized
+taskSchema.set("toJSON", { virtuals: true });
+taskSchema.set("toObject", { virtuals: true });
+
+module.exports = mongoose.model("Task", taskSchema);

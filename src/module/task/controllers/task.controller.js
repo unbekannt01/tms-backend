@@ -1,6 +1,7 @@
 const Task = require("../models/Task")
 const User = require("../../user/models/User")
 const PermissionService = require("../../rbac/services/permissionService")
+const emailService = require("../../../services/emailService")
 const mongoose = require("mongoose")
 
 const createTask = async (req, res) => {
@@ -32,6 +33,36 @@ const createTask = async (req, res) => {
       { path: "assignedTo", select: "firstName lastName userName email" },
       { path: "createdBy", select: "firstName lastName userName email" },
     ])
+
+    if (savedTask.assignedTo && savedTask.assignedTo.email) {
+      // Only send if assigned to someone other than creator OR if self-assigned but explicitly requested
+      const shouldSendEmail = savedTask.assignedTo._id.toString() !== currentUser._id.toString()
+
+      if (shouldSendEmail) {
+        try {
+          const emailResult = await emailService.sendTaskAssignmentEmail(
+            savedTask,
+            savedTask.createdBy,
+            savedTask.assignedTo,
+          )
+
+          if (emailResult.success) {
+            console.log(`[v0] Task assignment email sent to ${savedTask.assignedTo.email}`)
+            await Task.findByIdAndUpdate(savedTask._id, {
+              assignmentEmailSent: true,
+              assignmentEmailSentAt: new Date(),
+            })
+          } else {
+            console.error(`[v0] Failed to send task assignment email: ${emailResult.error}`)
+          }
+        } catch (emailError) {
+          console.error("[v0] Failed to send task assignment email:", emailError)
+          // Don't fail the task creation if email fails
+        }
+      }
+    } else {
+      console.warn(`[v0] No email address found for assigned user: ${savedTask.assignedTo?._id}`)
+    }
 
     res.status(201).json({
       message: "Task created successfully",
@@ -139,17 +170,24 @@ const updateTask = async (req, res) => {
     const currentUser = req.user
     const updateData = req.body
 
-    const task = await Task.findById(id)
+    const task = await Task.findById(id).populate([
+      { path: "assignedTo", select: "firstName lastName userName email" },
+      { path: "createdBy", select: "firstName lastName userName email" },
+    ])
+
     if (!task) {
       return res.status(404).json({ message: "Task not found" })
     }
+
+    // Store original values for comparison
+    const originalAssignedTo = task.assignedTo._id.toString()
 
     // Check permissions
     const canUpdateAll = await PermissionService.hasPermission(currentUser, "task:update:all")
     const canUpdateTeam = await PermissionService.hasPermission(currentUser, "task:update:team")
     const canUpdateOwn = await PermissionService.hasPermission(currentUser, "task:update:own")
-    const isOwner = task.assignedTo.toString() === currentUser._id.toString()
-    const isCreator = task.createdBy.toString() === currentUser._id.toString()
+    const isOwner = task.assignedTo._id.toString() === currentUser._id.toString()
+    const isCreator = task.createdBy._id.toString() === currentUser._id.toString()
 
     let canUpdate = false
     if (canUpdateAll) {
@@ -169,9 +207,37 @@ const updateTask = async (req, res) => {
       updateData.completedAt = new Date()
     }
 
-    const updatedTask = await Task.findByIdAndUpdate(id, updateData, { new: true })
+    const updatedTask = await Task.findByIdAndUpdate(id, updateData, {
+      new: true,
+    })
       .populate("assignedTo", "firstName lastName userName email")
       .populate("createdBy", "firstName lastName userName email")
+
+    try {
+      if (updateData.assignedTo && updateData.assignedTo !== originalAssignedTo) {
+        const newAssignee = await User.findById(updateData.assignedTo).select("firstName lastName userName email")
+
+        if (newAssignee && newAssignee.email) {
+          // Send email even if reassigned to the person making the update (self-assignment)
+          const emailResult = await emailService.sendTaskAssignmentEmail(updatedTask, currentUser, newAssignee)
+
+          if (emailResult.success) {
+            console.log(`[v0] Task reassignment email sent to ${newAssignee.email}`)
+            await Task.findByIdAndUpdate(updatedTask._id, {
+              reassignmentEmailSent: true,
+              reassignmentEmailSentAt: new Date(),
+            })
+          } else {
+            console.error(`[v0] Failed to send task reassignment email: ${emailResult.error}`)
+          }
+        } else {
+          console.warn(`[v0] No email address found for new assignee: ${updateData.assignedTo}`)
+        }
+      }
+    } catch (emailError) {
+      console.error("[v0] Failed to send task reassignment email:", emailError)
+      // Don't fail the task update if email fails
+    }
 
     res.json({
       message: "Task updated successfully",
@@ -227,7 +293,11 @@ const addComment = async (req, res) => {
     const { text } = req.body
     const currentUser = req.user
 
-    const task = await Task.findById(id)
+    const task = await Task.findById(id).populate([
+      { path: "assignedTo", select: "firstName lastName userName email" },
+      { path: "createdBy", select: "firstName lastName userName email" },
+    ])
+
     if (!task) {
       return res.status(404).json({ message: "Task not found" })
     }
@@ -235,8 +305,8 @@ const addComment = async (req, res) => {
     // Check if user can view the task (same logic as getTaskById)
     const canViewAll = await PermissionService.hasPermission(currentUser, "task:read:all")
     const canViewTeam = await PermissionService.hasPermission(currentUser, "task:read:team")
-    const isOwner = task.assignedTo.toString() === currentUser._id.toString()
-    const isCreator = task.createdBy.toString() === currentUser._id.toString()
+    const isOwner = task.assignedTo._id.toString() === currentUser._id.toString()
+    const isCreator = task.createdBy._id.toString() === currentUser._id.toString()
 
     if (!canViewAll && !canViewTeam && !isOwner && !isCreator) {
       return res.status(403).json({ message: "You don't have permission to comment on this task" })
