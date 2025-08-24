@@ -4,9 +4,10 @@ const cors = require("cors");
 const connectDB = require("./config/database");
 const { initializeModules } = require("./module");
 const { globalLimiter, apiLimiter } = require("./middleware/rateLimiter");
-const config = require("./config/config");
 
+// Import cron jobs
 require("./cron/deleteUsers.cron");
+require("./cron/dueDateAlert.cron");
 
 const app = express();
 
@@ -43,6 +44,15 @@ app.get("/", (req, res) => {
   res.send("🚀 Server is running successfully");
 });
 
+// Health check endpoint
+app.get("/api/health", (req, res) => {
+  res.json({ 
+    status: "OK", 
+    timestamp: new Date(),
+    emailService: "active"
+  });
+});
+
 // 404 Handler
 app.use("*", (req, res) => {
   res.status(404).json({ message: "Route not found" });
@@ -56,9 +66,10 @@ const startServer = async () => {
     await connectDB();
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
+      console.log(`Email service ready for task notifications`);
       if (process.env.PORT) {
         console.log(
-          `Public URL: ${process.env.FRONTEND_URL || "Check Railway domain"}`
+          `Public URL: ${process.env.FRONTEND_URL || "Check deployment domain"}`
         );
       }
     });

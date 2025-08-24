@@ -9,14 +9,15 @@ const mongoose = require("mongoose");
 const redis = require("../../../redisClient");
 const config = require("../../../config/config");
 const { EmailServiceForToken } = require("../services/emailTokenService");
+const emailService = require("../../../services/emailService");
 
 const emailServiceForToken = new EmailServiceForToken();
 
 const createUser = async (req, res) => {
   try {
     const { firstName, lastName, userName, email, password, age } = req.body;
+    const currentUser = req.user;
 
-    // Check if user already exists
     const existingUser = await User.findOne({
       $or: [
         { email: email.toLowerCase() },
@@ -32,7 +33,6 @@ const createUser = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Get admin user role instead of default "user"
     const userRole = await Role.findOne({ name: "user" });
 
     const user = new User({
@@ -49,6 +49,41 @@ const createUser = async (req, res) => {
     const savedUser = await user.save();
     await savedUser.populate("roleId");
 
+    try {
+      const welcomeEmailResult = await emailService.sendWelcomeEmail(
+        savedUser,
+        currentUser
+      );
+      if (welcomeEmailResult.success) {
+        console.log(`[v0] Welcome email sent to new user: ${savedUser.email}`);
+      }
+    } catch (emailError) {
+      console.error("[v0] Failed to send welcome email:", emailError);
+    }
+
+    if (
+      currentUser &&
+      currentUser._id.toString() !== savedUser._id.toString()
+    ) {
+      try {
+        const notificationResult =
+          await emailService.sendAccountCreationNotification(
+            savedUser,
+            currentUser
+          );
+        if (notificationResult.success) {
+          console.log(
+            `[v0] Account creation notification sent to manager: ${currentUser.email}`
+          );
+        }
+      } catch (emailError) {
+        console.error(
+          "[v0] Failed to send account creation notification:",
+          emailError
+        );
+      }
+    }
+
     const { password: _, ...userResponse } = savedUser.toObject();
 
     res.status(201).json({
@@ -64,12 +99,12 @@ const createUser = async (req, res) => {
 const createUsers = async (req, res) => {
   try {
     let usersData = req.body;
+    const currentUser = req.user;
 
     if (!Array.isArray(usersData)) {
       usersData = [usersData];
     }
 
-    // Get default user role
     const defaultRole = await Role.findOne({ name: "user" });
 
     const savedUsers = [];
@@ -110,8 +145,51 @@ const createUsers = async (req, res) => {
       const savedUser = await user.save();
       await savedUser.populate("roleId");
 
+      try {
+        const welcomeEmailResult = await emailService.sendWelcomeEmail(
+          savedUser,
+          currentUser
+        );
+        if (welcomeEmailResult.success) {
+          console.log(
+            `[v0] Welcome email sent to new user: ${savedUser.email}`
+          );
+        }
+      } catch (emailError) {
+        console.error(
+          `[v0] Failed to send welcome email to ${savedUser.email}:`,
+          emailError
+        );
+      }
+
       const { password: _, ...userResponse } = savedUser.toObject();
       savedUsers.push(userResponse);
+    }
+
+    if (currentUser && savedUsers.length > 0) {
+      try {
+        const bulkNotificationResult =
+          await emailService.sendAccountCreationNotification(
+            {
+              firstName: `${savedUsers.length} Users`,
+              lastName: "",
+              userName: "bulk_creation",
+              email: savedUsers.map((u) => u.email).join(", "),
+              roleId: { displayName: "Various" },
+            },
+            currentUser
+          );
+        if (bulkNotificationResult.success) {
+          console.log(
+            `[v0] Bulk account creation notification sent to manager: ${currentUser.email}`
+          );
+        }
+      } catch (emailError) {
+        console.error(
+          "[v0] Failed to send bulk account creation notification:",
+          emailError
+        );
+      }
     }
 
     res.status(201).json({
@@ -144,7 +222,6 @@ const createUserWithEmailToken = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Get default user role
     const defaultRole = await Role.findOne({ name: "user" });
 
     const user = new User({
@@ -209,13 +286,13 @@ const getUser = async (req, res) => {
 
 const getAllUser = async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
+    const page = Number.parseInt(req.query.page) || 1;
+    const limit = Number.parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
     const roleId = req.query.roleId;
     const search = req.query.search;
 
-    let filter = {};
+    const filter = {};
 
     if (roleId) {
       filter.roleId = roleId;
@@ -228,7 +305,6 @@ const getAllUser = async (req, res) => {
       ];
     }
 
-    // Find admin role id
     const adminRole = await Role.findOne({ name: "admin" });
     if (adminRole) {
       filter.roleId = filter.roleId
@@ -236,13 +312,11 @@ const getAllUser = async (req, res) => {
         : { $ne: adminRole._id };
     }
 
-    // Fetch users with pagination
     const users = await User.find(filter)
       .populate("roleId", "name displayName")
       .skip(skip)
       .limit(limit);
 
-    // Total count (excluding admin)
     const total = await User.countDocuments(filter);
 
     res.json({
