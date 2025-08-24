@@ -6,10 +6,6 @@ const {
   getUserById,
   updateUser,
   createUserWithEmailToken,
-  getUserWithBooks,
-  getAllUsersWithBooks,
-  getUsersByActivity,
-  getUserPreferences,
   softDeleteUser,
   restoreSoftDeletedUser,
   getAllUser,
@@ -23,17 +19,15 @@ router.post("/users/register", createUser);
 router.post("/users/v2/register", createUserWithEmailToken);
 
 // Specific GET routes first
-router.get("/users/activity", sessionAuthMiddleware, getUsersByActivity);
+router.get("/users/activity", sessionAuthMiddleware);
 router.get(
   "/users/getUserWithBooks/:userId",
   sessionAuthMiddleware,
-  getUserWithBooks
 );
-router.get("/usersWithBooks", sessionAuthMiddleware, getAllUsersWithBooks);
+router.get("/usersWithBooks", sessionAuthMiddleware);
 router.get(
   "/users/preferences/:userId",
   sessionAuthMiddleware,
-  getUserPreferences
 );
 router.get("/users", sessionAuthMiddleware, getUser);
 router.get(
