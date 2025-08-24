@@ -1,5 +1,9 @@
 const User = require("../../user/models/User");
 const Role = require("../../rbac/models/Role");
+<<<<<<< HEAD
+=======
+const Notification = require("../../notification/models/Notification");
+>>>>>>> ad89bbe7c467e48284743d965326f65a93b2250d
 const bcrypt = require("bcrypt");
 const {
   createSession,
@@ -65,6 +69,7 @@ const loginUser = async (req, res) => {
     user.status = "active";
     await user.save();
 
+<<<<<<< HEAD
     const { password: _password, ...userResponse } = user.toObject();
 
     res.status(200).json({
@@ -73,6 +78,50 @@ const loginUser = async (req, res) => {
       sessionId,
       accessToken,
     });
+=======
+    try {
+      // Get login notifications (this will create welcome notification if needed)
+      const loginNotificationsResponse = await fetch(
+        `${req.protocol}://${req.get("host")}/api/notifications/login`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      let loginNotifications = null;
+      if (loginNotificationsResponse.ok) {
+        loginNotifications = await loginNotificationsResponse.json();
+      }
+
+      const { password: _password, ...userResponse } = user.toObject();
+
+      res.status(200).json({
+        message: "Login successful!",
+        user: userResponse,
+        sessionId,
+        accessToken,
+        loginNotifications, // Include notifications in login response
+      });
+    } catch (notificationError) {
+      console.error(
+        "[v0] Failed to fetch login notifications:",
+        notificationError
+      );
+
+      // Still return successful login even if notifications fail
+      const { password: _password, ...userResponse } = user.toObject();
+
+      res.status(200).json({
+        message: "Login successful!",
+        user: userResponse,
+        sessionId,
+        accessToken,
+      });
+    }
+>>>>>>> ad89bbe7c467e48284743d965326f65a93b2250d
   } catch (err) {
     console.error("[v0] Login error:", err);
     res.status(500).json({ message: "Internal server error" });

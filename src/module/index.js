@@ -3,8 +3,9 @@ const bookModule = require("./book/init")
 const authModule = require("./auth/init")
 const rbacModule = require("./rbac/init")
 const taskModule = require("./task/init")
+const notificationModule = require("./notification/init")
 
-const modules = [userModule, bookModule, authModule, rbacModule, taskModule]
+const modules = [userModule, bookModule, authModule, rbacModule, taskModule, notificationModule]
 
 const initializeModules = (app) => {
   modules.forEach((module) => {

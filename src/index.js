@@ -1,5 +1,6 @@
 require("dotenv").config();
 const express = require("express");
+const { createServer } = require("http");
 const cors = require("cors");
 const connectDB = require("./config/database");
 const { initializeModules } = require("./module");
@@ -8,8 +9,13 @@ const { globalLimiter, apiLimiter } = require("./middleware/rateLimiter");
 // Import cron jobs
 require("./cron/deleteUsers.cron");
 require("./cron/dueDateAlert.cron");
+require("./cron/dueDateAlert.cron");
 
 const app = express();
+const server = createServer(app);
+
+// Initialize Socket.IO
+socketService.initialize(server);
 
 // Trust proxy (important for express-rate-limit behind Render/Vercel/Heroku/Nginx)
 app.set("trust proxy", 1);
@@ -64,7 +70,7 @@ const PORT = process.env.PORT || 3001;
 const startServer = async () => {
   try {
     await connectDB();
-    app.listen(PORT, () => {
+    server.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
       console.log(`Email service ready for task notifications`);
       if (process.env.PORT) {

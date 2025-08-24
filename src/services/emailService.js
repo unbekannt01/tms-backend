@@ -1,5 +1,10 @@
+<<<<<<< HEAD
 const nodemailer = require("nodemailer");
 const config = require("../config/config");
+=======
+const nodemailer = require("nodemailer")
+const config = require("../config/config")
+>>>>>>> ad89bbe7c467e48284743d965326f65a93b2250d
 
 class EmailService {
   constructor() {
@@ -11,7 +16,11 @@ class EmailService {
         user: config.smtp.user,
         pass: config.smtp.pass,
       },
+<<<<<<< HEAD
     });
+=======
+    })
+>>>>>>> ad89bbe7c467e48284743d965326f65a93b2250d
   }
 
   generateTaskAssignmentEmailTemplate(taskData, assignerData, recipientData) {
@@ -22,16 +31,26 @@ class EmailService {
           month: "long",
           day: "numeric",
         })
+<<<<<<< HEAD
       : "No due date set";
+=======
+      : "No due date set"
+>>>>>>> ad89bbe7c467e48284743d965326f65a93b2250d
 
     const priorityColors = {
       low: "#10B981",
       medium: "#F59E0B",
       high: "#EF4444",
       urgent: "#DC2626",
+<<<<<<< HEAD
     };
 
     const priorityColor = priorityColors[taskData.priority] || "#6B7280";
+=======
+    }
+
+    const priorityColor = priorityColors[taskData.priority] || "#6B7280"
+>>>>>>> ad89bbe7c467e48284743d965326f65a93b2250d
 
     return `
     <!DOCTYPE html>
@@ -119,11 +138,21 @@ class EmailService {
 
             <div class="footer">
                 <p>This is an automated notification from your task management system.</p>
+<<<<<<< HEAD
+=======
+                <p style="margin-top: 10px;">
+                    <a href="${config.url.frontend_url || config.url.frontend_local_url}/notifications" style="color: #667eea;">Manage Notifications</a>
+                </p>
+>>>>>>> ad89bbe7c467e48284743d965326f65a93b2250d
             </div>
         </div>
     </body>
     </html>
+<<<<<<< HEAD
     `;
+=======
+    `
+>>>>>>> ad89bbe7c467e48284743d965326f65a93b2250d
   }
 
   generateDueDateReminderTemplate(taskData, recipientData, isOverdue = false) {
@@ -132,11 +161,19 @@ class EmailService {
       year: "numeric",
       month: "long",
       day: "numeric",
+<<<<<<< HEAD
     });
 
     const headerColor = isOverdue ? "#DC2626" : "#F59E0B";
     const headerText = isOverdue ? "⚠️ Task Overdue" : "⏰ Task Due Soon";
     const urgencyText = isOverdue ? "overdue" : "due soon";
+=======
+    })
+
+    const headerColor = isOverdue ? "#DC2626" : "#F59E0B"
+    const headerText = isOverdue ? "⚠️ Task Overdue" : "⏰ Task Due Soon"
+    const urgencyText = isOverdue ? "overdue" : "due soon"
+>>>>>>> ad89bbe7c467e48284743d965326f65a93b2250d
 
     return `
     <!DOCTYPE html>
@@ -192,12 +229,20 @@ class EmailService {
         </div>
     </body>
     </html>
+<<<<<<< HEAD
     `;
+=======
+    `
+>>>>>>> ad89bbe7c467e48284743d965326f65a93b2250d
   }
 
   async sendTaskAssignmentEmail(taskData, assignerData, recipientData) {
     try {
+<<<<<<< HEAD
       const htmlContent = this.generateTaskAssignmentEmailTemplate(taskData, assignerData, recipientData);
+=======
+      const htmlContent = this.generateTaskAssignmentEmailTemplate(taskData, assignerData, recipientData)
+>>>>>>> ad89bbe7c467e48284743d965326f65a93b2250d
 
       const mailOptions = {
         from: `"Task Management System" <${config.smtp.user}>`,
@@ -205,6 +250,7 @@ class EmailService {
         subject: `🎯 New Task Assigned: ${taskData.title}`,
         html: htmlContent,
         text: `Hi ${recipientData.firstName},\n\nYou have been assigned a new task "${taskData.title}" by ${assignerData.firstName} ${assignerData.lastName}.\n\nDue Date: ${taskData.dueDate ? new Date(taskData.dueDate).toLocaleDateString() : "Not specified"}\nPriority: ${taskData.priority}\nEstimated Hours: ${taskData.estimatedHours || "Not specified"}\n\nDescription: ${taskData.description || "No description provided"}\n\nView task: ${config.url.frontend_url || config.url.frontend_local_url}/tasks/${taskData._id}`,
+<<<<<<< HEAD
       };
 
       const result = await this.transporter.sendMail(mailOptions);
@@ -213,13 +259,28 @@ class EmailService {
     } catch (error) {
       console.error(`[v0] Failed to send task assignment email to ${recipientData.email}:`, error);
       return { success: false, error: error.message };
+=======
+      }
+
+      const result = await this.transporter.sendMail(mailOptions)
+      console.log(`[v0] Task assignment email sent successfully to ${recipientData.email}:`, result.messageId)
+      return { success: true, messageId: result.messageId }
+    } catch (error) {
+      console.error(`[v0] Failed to send task assignment email to ${recipientData.email}:`, error)
+      return { success: false, error: error.message }
+>>>>>>> ad89bbe7c467e48284743d965326f65a93b2250d
     }
   }
 
   async sendDueDateReminderEmail(taskData, recipientData, isOverdue = false) {
     try {
+<<<<<<< HEAD
       const htmlContent = this.generateDueDateReminderTemplate(taskData, recipientData, isOverdue);
       const subject = isOverdue ? `⚠️ Task Overdue: ${taskData.title}` : `⏰ Task Due Soon: ${taskData.title}`;
+=======
+      const htmlContent = this.generateDueDateReminderTemplate(taskData, recipientData, isOverdue)
+      const subject = isOverdue ? `⚠️ Task Overdue: ${taskData.title}` : `⏰ Task Due Soon: ${taskData.title}`
+>>>>>>> ad89bbe7c467e48284743d965326f65a93b2250d
 
       const mailOptions = {
         from: `"Task Management System" <${config.smtp.user}>`,
@@ -227,6 +288,7 @@ class EmailService {
         subject,
         html: htmlContent,
         text: `Hi ${recipientData.firstName},\n\nYour task "${taskData.title}" is ${isOverdue ? "overdue" : "due soon"}.\n\nDue Date: ${new Date(taskData.dueDate).toLocaleDateString()}\n\nView task: ${config.url.frontend_url || config.url.frontend_local_url}/tasks/${taskData._id}`,
+<<<<<<< HEAD
       };
 
       const result = await this.transporter.sendMail(mailOptions);
@@ -246,8 +308,92 @@ class EmailService {
     } catch (error) {
       console.error("[v0] Email service connection failed:", error);
       return { success: false, error: error.message };
+=======
+      }
+
+      const result = await this.transporter.sendMail(mailOptions)
+      console.log(`[v0] Due date reminder email sent successfully to ${recipientData.email}:`, result.messageId)
+      return { success: true, messageId: result.messageId }
+    } catch (error) {
+      console.error(`[v0] Failed to send due date reminder email to ${recipientData.email}:`, error)
+      return { success: false, error: error.message }
+    }
+  }
+
+  async sendBulkNotificationEmails(notifications) {
+    const results = []
+
+    for (const notification of notifications) {
+      try {
+        let emailResult
+
+        if (notification.type === "task_assigned" && notification.relatedTask) {
+          // For task assignments, we need to populate task and user data
+          const Task = require("../module/task/models/Task")
+          const User = require("../module/user/models/User")
+
+          const taskData = await Task.findById(notification.relatedTask).populate("createdBy assignedTo")
+          const recipientData = await User.findById(notification.recipient)
+
+          if (taskData && recipientData) {
+            emailResult = await this.sendTaskAssignmentEmail(taskData, taskData.createdBy, recipientData)
+          }
+        } else if (["task_due_soon", "task_overdue"].includes(notification.type) && notification.relatedTask) {
+          const Task = require("../module/task/models/Task")
+          const User = require("../module/user/models/User")
+
+          const taskData = await Task.findById(notification.relatedTask)
+          const recipientData = await User.findById(notification.recipient)
+
+          if (taskData && recipientData) {
+            emailResult = await this.sendDueDateReminderEmail(
+              taskData,
+              recipientData,
+              notification.type === "task_overdue",
+            )
+          }
+        }
+
+        if (emailResult && emailResult.success) {
+          // Update notification to mark email as sent
+          notification.isEmailSent = true
+          notification.emailSentAt = new Date()
+          await notification.save()
+        }
+
+        results.push({
+          notificationId: notification._id,
+          success: emailResult ? emailResult.success : false,
+          error: emailResult ? emailResult.error : "Unknown notification type",
+        })
+      } catch (error) {
+        console.error(`[v0] Error processing notification ${notification._id}:`, error)
+        results.push({
+          notificationId: notification._id,
+          success: false,
+          error: error.message,
+        })
+      }
+    }
+
+    return results
+  }
+
+  async testConnection() {
+    try {
+      await this.transporter.verify()
+      console.log("[v0] Email service connection verified successfully")
+      return { success: true, message: "Email service is ready" }
+    } catch (error) {
+      console.error("[v0] Email service connection failed:", error)
+      return { success: false, error: error.message }
+>>>>>>> ad89bbe7c467e48284743d965326f65a93b2250d
     }
   }
 }
 
+<<<<<<< HEAD
 module.exports = new EmailService();
+=======
+module.exports = new EmailService()
+>>>>>>> ad89bbe7c467e48284743d965326f65a93b2250d
