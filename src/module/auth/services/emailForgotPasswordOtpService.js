@@ -23,6 +23,32 @@ class EmailServiceForForgotPasswordOTP {
       connectionTimeout: 10000,
       greetingTimeout: 10000,
       socketTimeout: 20000,
+      keepAlive: true,
+    })
+  }
+
+  createAlternateTransport() {
+    const primaryPort = Number.parseInt(config.smtp.port)
+    const primarySecure = !!config.smtp.secure
+
+    const usePort = primaryPort === 465 ? 587 : 465
+    const useSecure = usePort === 465 ? true : false
+
+    return nodemailer.createTransport({
+      pool: true,
+      maxConnections: 2,
+      maxMessages: 30,
+      host: config.smtp.host,
+      port: usePort,
+      secure: useSecure,
+      auth: {
+        user: config.smtp.user,
+        pass: config.smtp.pass,
+      },
+      connectionTimeout: 12000,
+      greetingTimeout: 12000,
+      socketTimeout: 25000,
+      keepAlive: true,
     })
   }
 
@@ -69,8 +95,19 @@ class EmailServiceForForgotPasswordOTP {
       return true
     } catch (retryError) {
       console.error("[OTP EMAIL] Retry failed:", retryError && retryError.message ? retryError.message : retryError)
-      return false
     }
+
+    // Alternate transport attempt
+    try {
+      const altTransport = this.createAlternateTransport()
+      const infoAlt = await altTransport.sendMail(mailOptions)
+      console.log("Forgot password OTP email sent via alternate transport:", infoAlt.messageId)
+      return true
+    } catch (altError) {
+      console.error("[OTP EMAIL] Alternate transport failed:", altError && altError.message ? altError.message : altError)
+    }
+
+    return false
   }
 }
 
