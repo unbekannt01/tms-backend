@@ -28,27 +28,14 @@ class EmailServiceForForgotPasswordOTP {
   }
 
   createAlternateTransport() {
-    const primaryPort = Number.parseInt(config.smtp.port)
-    const primarySecure = !!config.smtp.secure
-
-    const usePort = primaryPort === 465 ? 587 : 465
-    const useSecure = usePort === 465 ? true : false
-
     return nodemailer.createTransport({
-      pool: true,
-      maxConnections: 2,
-      maxMessages: 30,
       host: config.smtp.host,
-      port: usePort,
-      secure: useSecure,
+      port: config.smtp.port,
+      secure: config.smtp.secure,
       auth: {
         user: config.smtp.user,
         pass: config.smtp.pass,
       },
-      connectionTimeout: 12000,
-      greetingTimeout: 12000,
-      socketTimeout: 25000,
-      keepAlive: true,
     })
   }
 
