@@ -1,33 +1,25 @@
 const mongoose = require("mongoose");
-const dotenv = require("dotenv");
-const path = require("path");
-const fs = require("fs");
 
-// Determine environment
-const nodeEnv = process.env.NODE_ENV || "dev";
+// Only load .env files in development (not in Railway/production)
+if (process.env.NODE_ENV !== "prod" && !process.env.RAILWAY_ENVIRONMENT) {
+  const dotenv = require("dotenv");
+  const path = require("path");
+  const fs = require("fs");
 
-// Resolve env file path
-const envFile = path.resolve(process.cwd(), `.env.${nodeEnv}`);
-const fallbackEnv = path.resolve(process.cwd(), ".env");
+  const nodeEnv = process.env.NODE_ENV || "dev";
+  const envFile = path.resolve(process.cwd(), `.env.${nodeEnv}`);
+  const fallbackEnv = path.resolve(process.cwd(), ".env");
 
-// Load environment file
-let envPath = envFile;
-if (!fs.existsSync(envFile)) {
-  if (fs.existsSync(fallbackEnv)) {
-    envPath = fallbackEnv;
-  } else {
-    console.error(` Environment file not found: ${envFile}`);
-    process.exit(1);
+  if (fs.existsSync(envFile)) {
+    dotenv.config({ path: envFile });
+  } else if (fs.existsSync(fallbackEnv)) {
+    dotenv.config({ path: fallbackEnv });
   }
 }
 
-dotenv.config({ path: envPath });
-
 async function connectDB() {
   if (!process.env.MONGO_URI) {
-    console.error(
-      " MongoDB connection string not found. Please set MONGO_URI in your environment file."
-    );
+    console.error("MONGO_URI environment variable not found");
     process.exit(1);
   }
 
@@ -42,26 +34,26 @@ async function connectDB() {
     };
 
     await mongoose.connect(process.env.MONGO_URI, options);
-    console.log(" MongoDB connected:", mongoose.connection.host);
+    console.log("MongoDB connected:", mongoose.connection.host);
   } catch (error) {
-    console.error(" Database connection error:", error.message);
+    console.error("Database connection error:", error.message);
     process.exit(1);
   }
 }
 
 // Connection event listeners
 mongoose.connection.on("error", (err) => {
-  console.error(" MongoDB connection error:", err.message);
+  console.error("MongoDB connection error:", err.message);
 });
 
 mongoose.connection.on("disconnected", () => {
-  console.log(" MongoDB disconnected");
+  console.log("MongoDB disconnected");
 });
 
 // Graceful shutdown
 process.on("SIGINT", async () => {
   await mongoose.connection.close();
-  console.log(" MongoDB connection closed");
+  console.log("MongoDB connection closed");
   process.exit(0);
 });
 
