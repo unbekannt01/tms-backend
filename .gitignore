@@ -1,5 +1,10 @@
 .gitingnore
 .env
+.env.*
+.env.local
+.env.*.local
+.env.dev
+.env.prod
 node_modules
 scripts
 dist

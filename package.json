@@ -2,10 +2,11 @@
   "name": "backend-js",
   "version": "1.0.0",
   "description": "Backend API converted from TypeScript to JavaScript",
-  "main": "index.js",
+  "main": "src/index.js",
   "scripts": {
-    "start": "node src/index.js",
-    "dev": "nodemon src/index.js"
+    "dev": "cross-env NODE_ENV=dev nodemon src/index.js",
+    "start": "cross-env NODE_ENV=prod node src/index.js",
+    "build": "echo 'No build step needed for JS project'"
   },
   "dependencies": {
     "@faker-js/faker": "^9.9.0",
@@ -33,6 +34,7 @@
   },
   "devDependencies": {
     "@types/express": "^5.0.3",
+    "cross-env": "^7.0.3",
     "nodemon": "^3.0.1"
   }
 }
