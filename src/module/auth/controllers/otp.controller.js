@@ -17,6 +17,16 @@ const otpForForgotPassword = async (email) => {
   const otpCode = generateOtp();
   const otpExpiration = expiresOtp();
 
+  const emailSent = await emailServiceForForgotPassword.sendForgotPasswordOtpEmail(
+    email,
+    otpCode,
+    user.firstName || "User"
+  );
+
+  if (!emailSent) {
+    throw new Error("Failed to send OTP email")
+  }
+
   const otpData = new Otp({
     otp: otpCode,
     otpExpiration,
@@ -25,12 +35,6 @@ const otpForForgotPassword = async (email) => {
   });
 
   await otpData.save();
-
-  await emailServiceForForgotPassword.sendForgotPasswordOtpEmail(
-    email,
-    otpCode,
-    user.firstName || "User"
-  );
 
   return { message: "OTP generated successfully", expiresAt: otpExpiration };
 };
@@ -91,6 +95,16 @@ const resendForgotPasswordOtp = async (req, res) => {
     const otpCode = generateOtp();
     const otpExpiration = expiresOtp();
 
+    const emailSent = await emailServiceForForgotPassword.sendForgotPasswordOtpEmail(
+      email,
+      otpCode,
+      user.firstName || "User"
+    );
+
+    if (!emailSent) {
+      return res.status(502).json({ message: "Failed to send OTP email" })
+    }
+
     const otpData = new Otp({
       otp: otpCode,
       otpExpiration,
@@ -99,12 +113,6 @@ const resendForgotPasswordOtp = async (req, res) => {
     });
 
     await otpData.save();
-
-    await emailServiceForForgotPassword.sendForgotPasswordOtpEmail(
-      email,
-      otpCode,
-      user.firstName || "User"
-    );
 
     return res.json({
       message: "New OTP sent successfully",
