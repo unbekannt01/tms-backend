@@ -9,9 +9,6 @@ class EmailServiceForForgotPasswordOTP {
 
   createTransport() {
     return nodemailer.createTransport({
-      pool: true,
-      maxConnections: 3,
-      maxMessages: 50,
       host: config.smtp.host,
       port: Number.parseInt(config.smtp.port),
       secure: config.smtp.secure,
@@ -30,7 +27,7 @@ class EmailServiceForForgotPasswordOTP {
   createAlternateTransport() {
     return nodemailer.createTransport({
       host: config.smtp.host,
-      port: config.smtp.port,
+      port: Number.parseInt(config.smtp.port),
       secure: config.smtp.secure,
       auth: {
         user: config.smtp.user,
