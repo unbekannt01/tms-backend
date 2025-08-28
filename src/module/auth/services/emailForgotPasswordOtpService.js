@@ -1,27 +1,22 @@
 // services/emailForgotPasswordOtpService.js
-const nodemailer = require("nodemailer")
-const config = require("../../../config/config")
+const nodemailer = require("nodemailer");
+const config = require("../../../config/config");
 
 class EmailServiceForForgotPasswordOTP {
   constructor() {
-    this.transporter = this.createTransport()
+    this.transporter = this.createTransport();
   }
 
   createTransport() {
     return nodemailer.createTransport({
       host: config.smtp.host,
-      port: Number.parseInt(config.smtp.port),
-      secure: config.smtp.secure,
+      port: Number.parseInt(config.smtp.port || "587"),
+      secure: config.smtp.secure || "true",
       auth: {
         user: config.smtp.user,
         pass: config.smtp.pass,
       },
-      // Timeouts (in ms)
-      connectionTimeout: 10000,
-      greetingTimeout: 10000,
-      socketTimeout: 20000,
-      keepAlive: true,
-    })
+    });
   }
 
   createAlternateTransport() {
@@ -33,7 +28,7 @@ class EmailServiceForForgotPasswordOTP {
         user: config.smtp.user,
         pass: config.smtp.pass,
       },
-    })
+    });
   }
 
   async sendForgotPasswordOtpEmail(email, otp, firstName) {
@@ -59,40 +54,55 @@ class EmailServiceForForgotPasswordOTP {
           </table>
         </div>
         `,
-    }
+    };
 
     // First attempt
     try {
-      const info = await this.transporter.sendMail(mailOptions)
-      console.log("Forgot password OTP email sent:", info.messageId)
-      return true
+      const info = await this.transporter.sendMail(mailOptions);
+      console.log("Forgot password OTP email sent:", info.messageId);
+      return true;
     } catch (error) {
-      console.error("[OTP EMAIL] First attempt failed:", error && error.message ? error.message : error)
+      console.error(
+        "[OTP EMAIL] First attempt failed:",
+        error && error.message ? error.message : error
+      );
     }
 
     // Quick verify and recreate transport, then retry once
     try {
-      await this.transporter.verify().catch(() => {})
-      this.transporter = this.createTransport()
-      const infoRetry = await this.transporter.sendMail(mailOptions)
-      console.log("Forgot password OTP email sent on retry:", infoRetry.messageId)
-      return true
+      await this.transporter.verify().catch(() => {});
+      this.transporter = this.createTransport();
+      const infoRetry = await this.transporter.sendMail(mailOptions);
+      console.log(
+        "Forgot password OTP email sent on retry:",
+        infoRetry.messageId
+      );
+      return true;
     } catch (retryError) {
-      console.error("[OTP EMAIL] Retry failed:", retryError && retryError.message ? retryError.message : retryError)
+      console.error(
+        "[OTP EMAIL] Retry failed:",
+        retryError && retryError.message ? retryError.message : retryError
+      );
     }
 
     // Alternate transport attempt
     try {
-      const altTransport = this.createAlternateTransport()
-      const infoAlt = await altTransport.sendMail(mailOptions)
-      console.log("Forgot password OTP email sent via alternate transport:", infoAlt.messageId)
-      return true
+      const altTransport = this.createAlternateTransport();
+      const infoAlt = await altTransport.sendMail(mailOptions);
+      console.log(
+        "Forgot password OTP email sent via alternate transport:",
+        infoAlt.messageId
+      );
+      return true;
     } catch (altError) {
-      console.error("[OTP EMAIL] Alternate transport failed:", altError && altError.message ? altError.message : altError)
+      console.error(
+        "[OTP EMAIL] Alternate transport failed:",
+        altError && altError.message ? altError.message : altError
+      );
     }
 
-    return false
+    return false;
   }
 }
 
-module.exports = { EmailServiceForForgotPasswordOTP }
+module.exports = { EmailServiceForForgotPasswordOTP };
