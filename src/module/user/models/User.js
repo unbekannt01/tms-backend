@@ -1,4 +1,4 @@
-const mongoose = require("mongoose")
+const mongoose = require("mongoose");
 
 const userSchema = new mongoose.Schema(
   {
@@ -33,6 +33,16 @@ const userSchema = new mongoose.Schema(
     age: {
       type: Number,
       min: 1,
+    },
+    avatar: {
+      url: {
+        type: String,
+        default: null,
+      },
+      publicId: {
+        type: String,
+        default: null,
+      },
     },
     roleId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -75,7 +85,7 @@ userSchema.virtual("books", {
   ref: "Book",
   localField: "_id",
   foreignField: "userId",
-})
+});
 
 // Virtual for user's role
 userSchema.virtual("role", {
@@ -83,10 +93,10 @@ userSchema.virtual("role", {
   localField: "roleId",
   foreignField: "_id",
   justOne: true,
-})
+});
 
 // Ensure virtual fields are serialized
-userSchema.set("toJSON", { virtuals: true })
-userSchema.set("toObject", { virtuals: true })
+userSchema.set("toJSON", { virtuals: true });
+userSchema.set("toObject", { virtuals: true });
 
-module.exports = mongoose.model("User", userSchema)
+module.exports = mongoose.model("User", userSchema);
