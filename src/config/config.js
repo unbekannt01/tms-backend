@@ -44,24 +44,6 @@ module.exports = {
     dev_link: process.env.DEV_LINK,
   },
   ai: {
-    grok: {
-      enabled:
-        String(process.env.GROK_ENABLED || "true").toLowerCase() === "true",
-      apiKey: process.env.GROK_API_KEY,
-      baseUrl: process.env.GROK_BASE_URL || "https://api.x.ai/v1",
-      model: process.env.GROK_MODEL || "grok-4-latest",
-      timeoutMs: Number.parseInt(process.env.GROK_TIMEOUT_MS, 10) || 20000,
-    },
-    huggingface: {
-      enabled:
-        String(process.env.HF_ENABLED || "true").toLowerCase() === "true",
-      apiKey: process.env.HF_API_KEY,
-      baseUrl:
-        process.env.HF_BASE_URL ||
-        "https://api-inference.huggingface.co/models",
-      model: process.env.HF_MODEL || "google/flan-t5-large",
-      timeoutMs: Number.parseInt(process.env.HF_TIMEOUT_MS, 10) || 60000,
-    },
     gemini: {
       enabled: true,
       apiKey: process.env.GEMINI_API_KEY,
