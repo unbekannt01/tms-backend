@@ -1,5 +1,8 @@
 // config/config.js
-require("dotenv").config();
+const env = process.env.NODE_ENV || "dev";
+require("dotenv").config({ path: `.env.${env}` });
+
+// safe log for debugging
 
 module.exports = {
   postgres: {
@@ -46,7 +49,7 @@ module.exports = {
   ai: {
     gemini: {
       enabled: true,
-      apiKey: process.env.GEMINI_API_KEY,
+      apiKey: process.env.GEMINI_API_KEY, // 10 Request Per Minute Or 1500 Request Per Day
     }
   },
 };

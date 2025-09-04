@@ -16,6 +16,7 @@
     "config": "^4.1.0",
     "cors": "^2.8.5",
     "dotenv": "^16.6.1",
+    "dotenv-flow": "^4.1.0",
     "express": "^4.21.2",
     "express-rate-limit": "^8.0.1",
     "ioredis": "^5.7.0",

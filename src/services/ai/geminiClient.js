@@ -2,7 +2,7 @@ const config = require("../../config/config");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 async function enhanceTaskDescription({ title = "", description = "" }) {
-  const { enabled, apiKey } = config.ai?.gemini || {};
+  const { enabled, apiKey } = config.ai.gemini || {};
 
   if (!enabled) {
     const err = new Error("Gemini AI is disabled");

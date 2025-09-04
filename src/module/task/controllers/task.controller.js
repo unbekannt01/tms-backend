@@ -4,7 +4,7 @@ const PermissionService = require("../../rbac/services/permissionService");
 const emailService = require("../../../services/emailService");
 const mongoose = require("mongoose");
 const {
-  enhanceTaskDescription: grokEnhance,
+  enhanceTaskDescription: geminiEnhance,
 } = require("../../../services/ai/geminiClient");
 const config = require("../../../config/config");
 
@@ -493,11 +493,11 @@ const enhanceTaskDescription = async (req, res) => {
       return res.status(413).json({ message: "Description too large" });
     }
 
-    if (!config.ai?.grok?.enabled) {
+    if (!config.ai?.gemini?.enabled) {
       return res.status(503).json({ message: "AI enhancement is disabled" });
     }
 
-    const enhanced = await grokEnhance({ title, description });
+    const enhanced = await geminiEnhance({ title, description });
     return res.status(200).json({ enhancedDescription: enhanced });
   } catch (error) {
     console.error("Enhance description error:", error);
