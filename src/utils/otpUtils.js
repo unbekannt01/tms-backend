@@ -4,9 +4,16 @@ function generateOtp() {
 }
 
 function expiresOtp() {
-  return new Date(Date.now() + 5 * 60 * 1000); // 5 minutes from now
+  return new Date(Date.now() + 5 * 60 * 1000); // 2 minutes from now
 }
 
-module.exports = { generateOtp, expiresOtp };
+// Helper function to get expiry time in minutes for display
+function getOtpExpiryMinutes() {
+  return 5;
+}
 
-
+module.exports = {
+  generateOtp,
+  expiresOtp,
+  getOtpExpiryMinutes,
+};
