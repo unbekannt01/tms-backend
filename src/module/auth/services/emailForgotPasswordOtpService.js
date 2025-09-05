@@ -21,7 +21,7 @@ class EmailServiceForForgotPasswordOTP {
   }
 
   createAlternateTransport() {
-    return nodemailer.createTransporter({
+    return nodemailer.createTransport({
       host: config.smtp.host,
       port: Number.parseInt(config.smtp.port),
       secure: config.smtp.secure,
