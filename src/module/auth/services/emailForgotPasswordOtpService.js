@@ -7,8 +7,8 @@ class EmailServiceForForgotPasswordOTP {
   constructor() {
     this.transporter = nodemailer.createTransport({
       host: config.smtp.host,
-      port: config.smtp.port,
-      secure: config.smtp.secure,
+      port: Number.parseInt(config.smtp.port || "587"),
+      secure: config.smtp.secure === "true" || config.smtp.secure === true,
       auth: {
         user: config.smtp.user,
         pass: config.smtp.pass,
