@@ -1,5 +1,11 @@
 const mongoose = require("mongoose");
 
+// Schema for security questions
+const securityQuestionSchema = new mongoose.Schema({
+  question: { type: String, required: true },
+  answerHash: { type: String, required: true }, // hashed answer
+});
+
 const userSchema = new mongoose.Schema(
   {
     firstName: {
@@ -73,6 +79,12 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    backupCodes: [
+      {
+        code: { type: String, required: true },
+      },
+    ],
+    securityQuestions: [securityQuestionSchema], // added security questions
   },
   {
     timestamps: true,

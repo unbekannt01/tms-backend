@@ -7,6 +7,12 @@ const {
   invalidateAllUserSessions,
   invalidateOtherUserSessions,
 } = require("../../../utils/sessionUtils");
+const {
+  verifyBackupCodeByEmail,
+} = require("../../user/services/backupCodeService");
+const {
+  verifySecurityAnswers,
+} = require("../../auth/controllers/auth.controller");
 
 const changePassword = async (req, res) => {
   const { oldPassword, newPassword } = req.body;
@@ -188,8 +194,88 @@ const ResetPassword = async (req, res) => {
   }
 };
 
+const resetPasswordWithBackupCode = async (req, res) => {
+  const { email, code, newPassword } = req.body;
+
+  if (!email || !code || !newPassword)
+    return res
+      .status(400)
+      .json({ message: "Email, backup code and new password are required" });
+
+  const user = await User.findOne({ email: email.toLowerCase() });
+  if (!user) return res.status(404).json({ message: "User not found" });
+
+  const isValidCode = await verifyBackupCodeByEmail(email, code);
+  if (!isValidCode)
+    return res
+      .status(400)
+      .json({ message: "Invalid or already used backup code" });
+
+  const salt = await bcrypt.genSalt(12);
+  user.password = await bcrypt.hash(newPassword, salt);
+  await user.save();
+
+  await invalidateAllUserSessions(user._id);
+
+  return res.status(200).json({
+    message:
+      "Password reset successfully using backup code. Please login with your new password.",
+  });
+};
+
+const resetPasswordWithSecurityQuestions = async (req, res) => {
+  try {
+    const { email, answers, securityAnswers, newPassword } = req.body;
+
+    // accept either "securityAnswers" or "answers"
+    const providedAnswers = securityAnswers || answers;
+
+    if (
+      !email ||
+      !Array.isArray(providedAnswers) ||
+      providedAnswers.length === 0 ||
+      !newPassword
+    ) {
+      return res.status(400).json({
+        message: "Email, security answers, and new password are required",
+      });
+    }
+
+    const user = await User.findOne({ email: email.toLowerCase() });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const verified = await verifySecurityAnswers(email, providedAnswers);
+    if (!verified) {
+      return res
+        .status(400)
+        .json({ message: "Security answers are incorrect" });
+    }
+
+    // Hash new password
+    const salt = await bcrypt.genSalt(12);
+    user.password = await bcrypt.hash(newPassword, salt);
+    await user.save();
+
+    await invalidateAllUserSessions(user._id);
+
+    return res.status(200).json({
+      message: "Password reset successfully using security questions",
+    });
+  } catch (error) {
+    console.error("Error in resetPasswordWithSecurityQuestions:", error);
+    return res.status(500).json({
+      message: "Failed to reset password",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   changePassword,
   ForgotPassword,
   ResetPassword,
+  resetPasswordWithBackupCode,
+  resetPasswordWithSecurityQuestions,
 };

@@ -163,8 +163,157 @@ const getCurrentUser = async (req, res) => {
   }
 };
 
+const setSecurityQuestions = async (req, res) => {
+  try {
+    const { userId, securityQuestions: questions } = req.body;
+
+    // Validate inputs
+    if (!userId) {
+      return res.status(400).json({ message: "User ID is required" });
+    }
+
+    if (!questions) {
+      return res.status(400).json({ message: "Questions are required" });
+    }
+
+    if (!Array.isArray(questions)) {
+      return res.status(400).json({ message: "Questions must be an array" });
+    }
+
+    if (questions.length < 2) {
+      return res
+        .status(400)
+        .json({ message: "At least 2 security questions are required" });
+    }
+
+    // Validate each question
+    for (const q of questions) {
+      if (!q.question || !q.answer) {
+        return res.status(400).json({
+          message: "Each question must have both question and answer",
+        });
+      }
+    }
+
+    // Hash the questions
+    const hashedQuestions = await Promise.all(
+      questions.map(async (q) => {
+        return {
+          question: q.question,
+          answerHash: await bcrypt.hash(q.answer.toLowerCase().trim(), 10),
+        };
+      })
+    );
+
+    // Update the user
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { securityQuestions: hashedQuestions },
+      { new: true }
+    );
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    console.log("Security questions set successfully for user:", userId);
+
+    res.status(200).json({
+      message: "Security questions set successfully",
+      success: true,
+    });
+  } catch (error) {
+    console.error("Error setting security questions:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+const getSecurityQuestions = async (req, res) => {
+  try {
+    const { email } = req.query; // or req.body if you prefer
+
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
+    }
+
+    const user = await User.findOne({ email: email.toLowerCase() });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (!user.securityQuestions || user.securityQuestions.length === 0) {
+      return res
+        .status(404)
+        .json({ message: "No security questions set for this user" });
+    }
+
+    // Return only the questions, never the hashed answers
+    const questions = user.securityQuestions.map((q) => ({
+      question: q.question,
+    }));
+
+    res.status(200).json({
+      message: "Security questions retrieved successfully",
+      questions,
+    });
+  } catch (error) {
+    console.error("Error fetching security questions:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+const verifySecurityAnswers = async (email, answers) => {
+  try {
+    // Validate input without throwing
+    if (!email || !Array.isArray(answers) || answers.length === 0) {
+      return { success: false, message: "Email and answers are required" };
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return { success: false, message: "User not found" };
+    }
+
+    if (!user.securityQuestions?.length) {
+      return {
+        success: false,
+        message: "Security questions not set for this user",
+      };
+    }
+
+    const questionMap = new Map();
+    user.securityQuestions.forEach((q) =>
+      questionMap.set(q.question, q.answerHash)
+    );
+
+    for (const { question, answer } of answers) {
+      const hash = questionMap.get(question);
+      if (!hash) {
+        return { success: false, message: `Question "${question}" not found` };
+      }
+
+      const match = await bcrypt.compare(answer, hash);
+      if (!match) {
+        return {
+          success: false,
+          message: `Answer for "${question}" is incorrect`,
+        };
+      }
+    }
+
+    return { success: true, message: "All answers verified successfully" };
+  } catch (err) {
+    console.error("Error verifying security answers:", err);
+    return { success: false, message: "Internal server error" };
+  }
+};
+
 module.exports = {
   loginUser,
   logOutUser,
   getCurrentUser,
+  setSecurityQuestions,
+  verifySecurityAnswers,
+  getSecurityQuestions,
 };

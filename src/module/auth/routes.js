@@ -3,6 +3,9 @@ const {
   loginUser,
   logOutUser,
   getCurrentUser,
+  setSecurityQuestions,
+  verifySecurityAnswers,
+  getSecurityQuestions,
 } = require("./controllers/auth.controller");
 const {
   verifyOtp,
@@ -12,6 +15,8 @@ const {
   changePassword,
   ForgotPassword,
   ResetPassword,
+  resetPasswordWithBackupCode,
+  resetPasswordWithSecurityQuestions,
 } = require("./controllers/password.controller");
 const {
   emailVerifyToken,
@@ -39,7 +44,31 @@ router.post("/resend", authLimiter, resendForgotPasswordOtp);
 router.post("/resend-email-verification", authLimiter, resendEmailVerification);
 router.post("/forgot-password", sensitiveOperationsLimiter, ForgotPassword);
 router.post("/reset-password", sensitiveOperationsLimiter, ResetPassword);
+router.post(
+  "/reset-password-with-backupCode",
+  sensitiveOperationsLimiter,
+  resetPasswordWithBackupCode
+);
 router.get("/v2/verifyEmail/:token", emailVerifyToken);
+
+router.post(
+  "/setSecurityQuestions",
+  sensitiveOperationsLimiter,
+  setSecurityQuestions
+);
+router.post(
+  "/verifySecurityAnswers",
+  sensitiveOperationsLimiter,
+  verifySecurityAnswers
+);
+router.get(
+  "/getSecurityQuestions",
+  getSecurityQuestions
+);
+
+router.post("/reset-password-with-backup-code", resetPasswordWithBackupCode)
+router.post("/reset-password-with-security-answers", resetPasswordWithSecurityQuestions);
+
 
 // Session-protected routes
 router.post("/users/logout", sessionAuthMiddleware, logOutUser);
