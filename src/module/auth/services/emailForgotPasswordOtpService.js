@@ -12,7 +12,8 @@ class EmailServiceForForgotPasswordOTP {
     return nodemailer.createTransport({
       host: config.smtp.host,
       port: Number.parseInt(config.smtp.port || "587"),
-      secure: config.smtp.secure || "true",
+      // FIX: Use the same secure logic as your working services
+      secure: config.smtp.secure === "true" || config.smtp.secure === true,
       auth: {
         user: config.smtp.user,
         pass: config.smtp.pass,
@@ -24,7 +25,8 @@ class EmailServiceForForgotPasswordOTP {
     return nodemailer.createTransport({
       host: config.smtp.host,
       port: Number.parseInt(config.smtp.port),
-      secure: config.smtp.secure,
+      // FIX: Same here
+      secure: config.smtp.secure === "true" || config.smtp.secure === true,
       auth: {
         user: config.smtp.user,
         pass: config.smtp.pass,
@@ -76,15 +78,23 @@ class EmailServiceForForgotPasswordOTP {
         `,
     };
 
+    // Enhanced error logging for debugging
+    console.log("Forgot Password SMTP Config:", {
+      host: config.smtp.host,
+      port: Number.parseInt(config.smtp.port || "587"),
+      secure: config.smtp.secure === "true" || config.smtp.secure === true,
+      user: config.smtp.user ? "SET" : "MISSING",
+    });
+
     // First attempt with primary transport
     try {
       const info = await this.transporter.sendMail(mailOptions);
-      // console.log(
-      //   `✅ Forgot password OTP email sent successfully: ${info.messageId}`
-      // );
+      console.log(
+        `✅ Forgot password OTP email sent successfully: ${info.messageId}`
+      );
       return true;
     } catch (error) {
-      // console.error("❌ Primary transport failed:", error?.message || error);
+      console.error("❌ Primary transport failed:", error?.message || error);
     }
 
     // Retry with transport recreation
@@ -92,27 +102,27 @@ class EmailServiceForForgotPasswordOTP {
       await this.transporter.verify().catch(() => {});
       this.transporter = this.createTransport();
       const infoRetry = await this.transporter.sendMail(mailOptions);
-      // console.log(
-      //   `✅ Forgot password OTP email sent on retry: ${infoRetry.messageId}`
-      // );
+      console.log(
+        `✅ Forgot password OTP email sent on retry: ${infoRetry.messageId}`
+      );
       return true;
     } catch (retryError) {
-      // console.error(
-      //   "❌ Retry transport failed:",
-      //   retryError?.message || retryError
-      // );
+      console.error(
+        "❌ Retry transport failed:",
+        retryError?.message || retryError
+      );
     }
 
     // Final attempt with alternate transport
     try {
       const altTransport = this.createAlternateTransport();
       const infoAlt = await altTransport.sendMail(mailOptions);
-      // console.log(
-      //   `✅ Forgot password OTP email sent via alternate: ${infoAlt.messageId}`
-      // );
+      console.log(
+        `✅ Forgot password OTP email sent via alternate: ${infoAlt.messageId}`
+      );
       return true;
     } catch (altError) {
-      // console.error("❌ All transports failed:", altError?.message || altError);
+      console.error("❌ All transports failed:", altError?.message || altError);
       return false;
     }
   }
