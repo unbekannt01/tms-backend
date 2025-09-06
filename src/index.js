@@ -54,6 +54,25 @@ app.get("/api/health", (req, res) => {
   });
 });
 
+// 🔹 Debug SMTP latency endpoint (add this before 404 handler)
+const net = require("net");
+
+app.get("/debug-smtp", (req, res) => {
+  const start = Date.now();
+
+  const socket = net.createConnection(587, "smtp.gmail.com", () => {
+    const latency = Date.now() - start;
+    console.log("✅ SMTP connected in", latency, "ms");
+    socket.end();
+    res.json({ success: true, latency: `${latency} ms` });
+  });
+
+  socket.on("error", (err) => {
+    console.error("❌ SMTP connection error:", err);
+    res.json({ success: false, error: err.message });
+  });
+});
+
 // 404 Handler
 app.use("*", (req, res) => {
   res.status(404).json({ message: "Route not found" });
