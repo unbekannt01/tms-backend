@@ -5,7 +5,7 @@ const { getOtpExpiryMinutes } = require("../../../utils/otpUtils");
 
 class EmailServiceForForgotPasswordOTP {
   constructor() {
-    this.transporter = this.createTransport();
+    this.transporter = this.createTransporter();
   }
 
   createTransport() {
