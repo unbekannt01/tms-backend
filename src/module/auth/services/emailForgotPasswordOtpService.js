@@ -5,28 +5,10 @@ const { getOtpExpiryMinutes } = require("../../../utils/otpUtils");
 
 class EmailServiceForForgotPasswordOTP {
   constructor() {
-    this.transporter = this.createTransporter();
-  }
-
-  createTransport() {
-    return nodemailer.createTransport({
+    this.transporter = nodemailer.createTransport({
       host: config.smtp.host,
-      port: Number.parseInt(config.smtp.port || "587"),
-      // FIX: Use the same secure logic as your working services
-      secure: config.smtp.secure === "true" || config.smtp.secure === true,
-      auth: {
-        user: config.smtp.user,
-        pass: config.smtp.pass,
-      },
-    });
-  }
-
-  createAlternateTransport() {
-    return nodemailer.createTransport({
-      host: config.smtp.host,
-      port: Number.parseInt(config.smtp.port),
-      // FIX: Same here
-      secure: config.smtp.secure === "true" || config.smtp.secure === true,
+      port: config.smtp.port,
+      secure: config.smtp.secure,
       auth: {
         user: config.smtp.user,
         pass: config.smtp.pass,
