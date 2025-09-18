@@ -6,6 +6,7 @@ const {
   setSecurityQuestions,
   verifySecurityAnswers,
   getSecurityQuestions,
+  completeSecuritySetup, // NEW IMPORT
 } = require("./controllers/auth.controller");
 const {
   verifyOtp,
@@ -69,6 +70,13 @@ router.get(
 router.post("/reset-password-with-backup-code", resetPasswordWithBackupCode)
 router.post("/reset-password-with-security-answers", resetPasswordWithSecurityQuestions);
 
+// NEW ROUTE FOR COMPLETE SECURITY SETUP
+router.post(
+  "/complete-security-setup",
+  sessionAuthMiddleware,
+  sensitiveOperationsLimiter,
+  completeSecuritySetup
+);
 
 // Session-protected routes
 router.post("/users/logout", sessionAuthMiddleware, logOutUser);

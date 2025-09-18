@@ -11,6 +11,7 @@ const {
   generateAccessToken,
   verifyAccessToken,
 } = require("../../../utils/jwtUtils");
+const crypto = require('crypto');
 
 const loginUser = async (req, res) => {
   try {
@@ -67,11 +68,22 @@ const loginUser = async (req, res) => {
 
     const { password: _password, ...userResponse } = user.toObject();
 
+    // CHECK FOR SECURITY SETUP MIGRATION
+    const needsSecuritySetup = !user.isSecuritySetupComplete && 
+      (
+        !user.securityQuestions || 
+        user.securityQuestions.length === 0 || 
+        !user.backupCodes || 
+        user.backupCodes.length === 0
+      );
+
     res.status(200).json({
       message: "Login successful!",
       user: userResponse,
       sessionId,
       accessToken,
+      // NEW FIELD FOR FRONTEND
+      needsSecuritySetup,
     });
   } catch (err) {
     console.error("[v0] Login error:", err);
@@ -152,20 +164,32 @@ const getCurrentUser = async (req, res) => {
 
     delete userData.password;
 
+    // CHECK FOR SECURITY SETUP MIGRATION
+    const needsSecuritySetup = !userData.isSecuritySetupComplete && 
+      (
+        !userData.securityQuestions || 
+        userData.securityQuestions.length === 0 || 
+        !userData.backupCodes || 
+        userData.backupCodes.length === 0
+      );
+
     res.status(200).json({
       message: "Session valid",
       user: userData,
       sessionId: req.sessionId,
       accessToken: req.accessToken,
+      needsSecuritySetup,
     });
   } catch (err) {
     res.status(500).json({ message: "Internal server error" });
   }
 };
 
+// UPDATED setSecurityQuestions function
 const setSecurityQuestions = async (req, res) => {
   try {
-    const { userId, securityQuestions: questions } = req.body;
+    const userId = req.userId || req.body.userId; // Support both session and body userId
+    const { securityQuestions: questions } = req.body;
 
     // Validate inputs
     if (!userId) {
@@ -208,7 +232,11 @@ const setSecurityQuestions = async (req, res) => {
     // Update the user
     const user = await User.findByIdAndUpdate(
       userId,
-      { securityQuestions: hashedQuestions },
+      { 
+        securityQuestions: hashedQuestions,
+        isSecuritySetupComplete: true, // MARK AS COMPLETE
+        securitySetupPromptShown: true,
+      },
       { new: true }
     );
 
@@ -309,6 +337,74 @@ const verifySecurityAnswers = async (email, answers) => {
   }
 };
 
+// NEW FUNCTION: Complete Security Setup with Backup Codes
+const completeSecuritySetup = async (req, res) => {
+  try {
+    const userId = req.userId; // From session middleware
+    const { securityQuestions: questions } = req.body;
+
+    // Validate inputs
+    if (!questions || !Array.isArray(questions) || questions.length < 2) {
+      return res.status(400).json({ 
+        message: "At least 2 security questions are required" 
+      });
+    }
+
+    // Validate each question
+    for (const q of questions) {
+      if (!q.question || !q.answer) {
+        return res.status(400).json({
+          message: "Each question must have both question and answer",
+        });
+      }
+    }
+
+    // Hash the questions
+    const hashedQuestions = await Promise.all(
+      questions.map(async (q) => {
+        return {
+          question: q.question,
+          answerHash: await bcrypt.hash(q.answer.toLowerCase().trim(), 10),
+        };
+      })
+    );
+
+    // Generate backup codes directly (no service needed)
+    const backupCodes = [];
+    for (let i = 0; i < 8; i++) {
+      const code = crypto.randomBytes(4).toString('hex').toUpperCase();
+      backupCodes.push(code);
+    }
+
+    // Update the user with security questions and backup codes
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { 
+        securityQuestions: hashedQuestions,
+        backupCodes: backupCodes.map(code => ({ code })), // Match your schema format
+        isSecuritySetupComplete: true,
+        securitySetupPromptShown: true,
+      },
+      { new: true }
+    );
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    console.log(`Security setup completed for user: ${userId}, generated ${backupCodes.length} backup codes`);
+
+    res.status(200).json({
+      message: "Security setup completed successfully",
+      success: true,
+      backupCodes, // Return plain codes for user to save
+    });
+  } catch (error) {
+    console.error("Error completing security setup:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
 module.exports = {
   loginUser,
   logOutUser,
@@ -316,4 +412,5 @@ module.exports = {
   setSecurityQuestions,
   verifySecurityAnswers,
   getSecurityQuestions,
+  completeSecuritySetup, // NEW EXPORT
 };

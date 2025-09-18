@@ -85,6 +85,21 @@ const userSchema = new mongoose.Schema(
       },
     ],
     securityQuestions: [securityQuestionSchema], // added security questions
+    
+    // NEW FIELDS FOR MIGRATION
+    isSecuritySetupComplete: {
+      type: Boolean,
+      default: false,
+    },
+    registrationMethod: {
+      type: String,
+      enum: ["otp", "simple", "email_token"],
+      default: "simple", // Changed default to simple
+    },
+    securitySetupPromptShown: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,
