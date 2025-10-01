@@ -1,7 +1,7 @@
 const Task = require("../models/Task");
 const User = require("../../user/models/User");
 const PermissionService = require("../../rbac/services/permissionService");
-const emailService = require("../../../services/emailService");
+// const emailService = require("../../../services/emailService");
 const mongoose = require("mongoose");
 const {
   enhanceTaskDescription: geminiEnhance,
@@ -21,7 +21,6 @@ const createTask = async (req, res) => {
     } = req.body;
     const currentUser = req.user;
 
-    // Check if user can create tasks for others
     if (assignedTo && assignedTo !== currentUser._id.toString()) {
       const canAssignToOthers = await PermissionService.hasPermission(
         currentUser,
@@ -51,8 +50,9 @@ const createTask = async (req, res) => {
       { path: "createdBy", select: "firstName lastName userName email" },
     ]);
 
+    // 🔕 Email sending commented out
+    /*
     if (savedTask.assignedTo && savedTask.assignedTo.email) {
-      // Only send if assigned to someone other than creator OR if self-assigned but explicitly requested
       const shouldSendEmail =
         savedTask.assignedTo._id.toString() !== currentUser._id.toString();
 
@@ -82,7 +82,6 @@ const createTask = async (req, res) => {
             "[v0] Failed to send task assignment email:",
             emailError
           );
-          // Don't fail the task creation if email fails
         }
       }
     } else {
@@ -90,6 +89,7 @@ const createTask = async (req, res) => {
         `[v0] No email address found for assigned user: ${savedTask.assignedTo?._id}`
       );
     }
+    */
 
     res.status(201).json({
       message: "Task created successfully",
@@ -225,10 +225,8 @@ const updateTask = async (req, res) => {
       return res.status(404).json({ message: "Task not found" });
     }
 
-    // Store original values for comparison
     const originalAssignedTo = task.assignedTo._id.toString();
 
-    // Check permissions
     const canUpdateAll = await PermissionService.hasPermission(
       currentUser,
       "task:update:all"
@@ -261,7 +259,6 @@ const updateTask = async (req, res) => {
         .json({ message: "You don't have permission to update this task" });
     }
 
-    // Handle status change to completed
     if (updateData.status === "completed" && task.status !== "completed") {
       updateData.completedAt = new Date();
     }
@@ -272,6 +269,8 @@ const updateTask = async (req, res) => {
       .populate("assignedTo", "firstName lastName userName email")
       .populate("createdBy", "firstName lastName userName email");
 
+    // 🔕 Email sending commented out
+    /*
     try {
       if (
         updateData.assignedTo &&
@@ -282,7 +281,6 @@ const updateTask = async (req, res) => {
         );
 
         if (newAssignee && newAssignee.email) {
-          // Send email even if reassigned to the person making the update (self-assignment)
           const emailResult = await emailService.sendTaskAssignmentEmail(
             updatedTask,
             currentUser,
@@ -310,8 +308,8 @@ const updateTask = async (req, res) => {
       }
     } catch (emailError) {
       console.error("[v0] Failed to send task reassignment email:", emailError);
-      // Don't fail the task update if email fails
     }
+    */
 
     res.json({
       message: "Task updated successfully",
