@@ -1,3 +1,4 @@
+// avatar.controller.js
 const User = require("../models/User")
 const { cloudinary } = require("../../../config/cloudinary")
 const mongoose = require("mongoose")
@@ -21,34 +22,42 @@ const uploadAvatar = async (req, res) => {
     if (user.avatar && user.avatar.publicId) {
       try {
         await cloudinary.uploader.destroy(user.avatar.publicId)
-        console.log(`[v0] Deleted old avatar: ${user.avatar.publicId}`)
+        console.log(`[v1] Deleted old avatar: ${user.avatar.publicId}`)
       } catch (error) {
-        console.error("[v0] Error deleting old avatar:", error)
+        console.error("[v1] Error deleting old avatar:", error)
       }
     }
 
-    // Update user with new avatar info
+    // Save the new avatar info
     const updatedUser = await User.findByIdAndUpdate(
       userId,
       {
         avatar: {
-          url: req.file.path,
-          publicId: req.file.filename,
+          publicId: req.file.filename, // store public_id only
         },
       },
       { new: true, select: "-password" },
     ).populate("roleId", "name displayName permissions")
 
+    // Generate transformed URL for frontend (always optimized)
+    const avatarUrl = cloudinary.url(req.file.filename, {
+      transformation: [
+        { width: 200, height: 200, crop: "fill", gravity: "face" },
+        { quality: "auto" },
+        { fetch_format: "auto" },
+      ],
+    })
+
     res.json({
       message: "Avatar uploaded successfully",
       user: updatedUser,
       avatar: {
-        url: req.file.path,
+        url: avatarUrl,
         publicId: req.file.filename,
       },
     })
   } catch (error) {
-    console.error("[v0] Upload avatar error:", error)
+    console.error("[v1] Upload avatar error:", error)
     res.status(500).json({ message: "Internal server error" })
   }
 }
@@ -67,19 +76,31 @@ const getAvatar = async (req, res) => {
       return res.status(404).json({ message: "User not found" })
     }
 
-    if (!user.avatar || !user.avatar.url) {
+    if (!user.avatar || !user.avatar.publicId) {
       return res.status(404).json({ message: "No avatar found for this user" })
     }
 
+    // Generate transformed URL
+    const avatarUrl = cloudinary.url(user.avatar.publicId, {
+      transformation: [
+        { width: 200, height: 200, crop: "fill", gravity: "face" },
+        { quality: "auto" },
+        { fetch_format: "auto" },
+      ],
+    })
+
     res.json({
-      avatar: user.avatar,
+      avatar: {
+        url: avatarUrl,
+        publicId: user.avatar.publicId,
+      },
       user: {
         firstName: user.firstName,
         lastName: user.lastName,
       },
     })
   } catch (error) {
-    console.error("[v0] Get avatar error:", error)
+    console.error("[v1] Get avatar error:", error)
     res.status(500).json({ message: "Internal server error" })
   }
 }
@@ -101,17 +122,15 @@ const deleteAvatar = async (req, res) => {
     // Delete from Cloudinary
     try {
       await cloudinary.uploader.destroy(user.avatar.publicId)
-      console.log(`[v0] Deleted avatar from Cloudinary: ${user.avatar.publicId}`)
+      console.log(`[v1] Deleted avatar from Cloudinary: ${user.avatar.publicId}`)
     } catch (error) {
-      console.error("[v0] Error deleting from Cloudinary:", error)
+      console.error("[v1] Error deleting from Cloudinary:", error)
     }
 
     // Remove avatar from user document
     const updatedUser = await User.findByIdAndUpdate(
       userId,
-      {
-        $unset: { avatar: 1 },
-      },
+      { $unset: { avatar: 1 } },
       { new: true, select: "-password" },
     ).populate("roleId", "name displayName permissions")
 
@@ -120,7 +139,7 @@ const deleteAvatar = async (req, res) => {
       user: updatedUser,
     })
   } catch (error) {
-    console.error("[v0] Delete avatar error:", error)
+    console.error("[v1] Delete avatar error:", error)
     res.status(500).json({ message: "Internal server error" })
   }
 }
