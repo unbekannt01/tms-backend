@@ -7,7 +7,6 @@
     "dev": "cross-env NODE_ENV=dev nodemon src/index.js",
     "start": "cross-env NODE_ENV=prod node src/index.js",
     "build": "echo 'No build step needed for JS project'",
-    
     "migrate": "node scripts/migrate-existing-users.js",
     "migrate:dev": "cross-env NODE_ENV=development node scripts/migrate-existing-users.js",
     "migrate:prod": "cross-env NODE_ENV=production node scripts/migrate-existing-users.js",
@@ -41,6 +40,7 @@
     "redis": "^4.7.1",
     "reflect-metadata": "^0.1.13",
     "socket.io": "^4.8.1",
+    "socket.io-client": "^4.8.1",
     "typeorm": "^0.3.25",
     "ua-parser-js": "^2.0.4",
     "uuid": "^11.1.0",
