@@ -49,7 +49,7 @@ module.exports = {
   ai: {
     gemini: {
       enabled: true,
-      apiKey: process.env.GEMINI_API_KEY, // 10 Request Per Minute Or 1500 Request Per Day
-    }
+      apiKey: process.env.GEMINI_API_KEY, // 10 Requests Per Minute Or 1500 Requests Per Day
+    },
   },
 };
