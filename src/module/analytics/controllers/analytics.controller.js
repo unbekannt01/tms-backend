@@ -4,6 +4,47 @@ const User = require("../../user/models/User")
 const PermissionService = require("../../rbac/services/permissionService")
 const mongoose = require("mongoose")
 
+// Helper function to build date filter
+const buildDateFilter = (query) => {
+  const { timeframe, startDate, endDate } = query
+  
+  if (startDate && endDate) {
+    // Use custom date range
+    const start = new Date(startDate)
+    const end = new Date(endDate)
+    
+    // Set start to beginning of day and end to end of day
+    start.setHours(0, 0, 0, 0)
+    end.setHours(23, 59, 59, 999)
+    
+    return {
+      createdAt: {
+        $gte: start,
+        $lte: end,
+      },
+    }
+  } else if (timeframe) {
+    // Use timeframe (days ago)
+    const daysAgo = Number.parseInt(timeframe) || 7
+    const fromDate = new Date()
+    fromDate.setDate(fromDate.getDate() - daysAgo)
+    fromDate.setHours(0, 0, 0, 0)
+    
+    return {
+      createdAt: { $gte: fromDate },
+    }
+  }
+  
+  // Default to last 7 days if nothing specified
+  const fromDate = new Date()
+  fromDate.setDate(fromDate.getDate() - 7)
+  fromDate.setHours(0, 0, 0, 0)
+  
+  return {
+    createdAt: { $gte: fromDate },
+  }
+}
+
 // Get manager's team analytics
 const getManagerAnalytics = async (req, res) => {
   try {
@@ -18,26 +59,8 @@ const getManagerAnalytics = async (req, res) => {
       })
     }
 
-    const { timeframe = "7", startDate, endDate } = req.query
-
-    // Build date filter
-    let dateFilter = {}
-    if (startDate && endDate) {
-      dateFilter = {
-        createdAt: {
-          $gte: new Date(startDate),
-          $lte: new Date(endDate),
-        },
-      }
-    } else {
-      // Default timeframes
-      const daysAgo = Number.parseInt(timeframe)
-      const fromDate = new Date()
-      fromDate.setDate(fromDate.getDate() - daysAgo)
-      dateFilter = {
-        createdAt: { $gte: fromDate },
-      }
-    }
+    // Build date filter using helper
+    const dateFilter = buildDateFilter(req.query)
 
     // Get all tasks created by this manager
     const managerTasks = await Task.aggregate([
@@ -60,12 +83,25 @@ const getManagerAnalytics = async (req, res) => {
       },
     ])
 
+    // Calculate timeframe for trends
+    const timeframe = req.query.timeframe || "7"
+    const startDate = req.query.startDate
+    const endDate = req.query.endDate
+    
+    // Calculate days for productivity trends
+    let days = Number.parseInt(timeframe)
+    if (startDate && endDate) {
+      const start = new Date(startDate)
+      const end = new Date(endDate)
+      days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1
+    }
+
     // Calculate analytics
     const analytics = {
       overview: calculateOverviewStats(managerTasks),
       teamPerformance: calculateTeamPerformance(managerTasks),
       taskDistribution: calculateTaskDistribution(managerTasks),
-      productivityTrends: calculateProductivityTrends(managerTasks, timeframe),
+      productivityTrends: calculateProductivityTrends(managerTasks, days, startDate, endDate),
       priorityAnalysis: calculatePriorityAnalysis(managerTasks),
       completionRates: calculateCompletionRates(managerTasks),
       overdueAnalysis: calculateOverdueAnalysis(managerTasks),
@@ -76,7 +112,11 @@ const getManagerAnalytics = async (req, res) => {
     res.json({
       success: true,
       data: analytics,
-      timeframe: timeframe,
+      filters: {
+        timeframe: req.query.timeframe,
+        startDate: req.query.startDate,
+        endDate: req.query.endDate,
+      },
       totalTasks: managerTasks.length,
     })
   } catch (error) {
@@ -227,35 +267,50 @@ function calculateTaskDistribution(tasks) {
   }
 }
 
-function calculateProductivityTrends(tasks, timeframe) {
+function calculateProductivityTrends(tasks, days, startDate, endDate) {
   const normalized = tasks.map((t) => ({ ...t, status: normalizeStatusStr(t.status) }))
-  const days = Number.parseInt(timeframe)
   const trends = []
 
-  for (let i = days - 1; i >= 0; i--) {
-    const date = new Date()
-    date.setUTCHours(0, 0, 0, 0)
-    date.setDate(date.getDate() - i)
+  // Determine the date range
+  let rangeStart, rangeEnd
+  
+  if (startDate && endDate) {
+    rangeStart = new Date(startDate)
+    rangeEnd = new Date(endDate)
+  } else {
+    rangeEnd = new Date()
+    rangeStart = new Date()
+    rangeStart.setDate(rangeStart.getDate() - (days - 1))
+  }
 
+  rangeStart.setUTCHours(0, 0, 0, 0)
+  rangeEnd.setUTCHours(0, 0, 0, 0)
+
+  // Generate trends for each day in the range
+  const currentDate = new Date(rangeStart)
+  
+  while (currentDate <= rangeEnd) {
     const dayTasks = normalized.filter((task) => {
       const createdAt = new Date(task.createdAt)
       createdAt.setUTCHours(0, 0, 0, 0)
-      return sameDay(createdAt, date)
+      return sameDay(createdAt, currentDate)
     })
 
     const dayCompleted = normalized.filter((task) => {
       if (!task.completedAt) return false
       const completedDate = new Date(task.completedAt)
       completedDate.setUTCHours(0, 0, 0, 0)
-      return sameDay(completedDate, date)
+      return sameDay(completedDate, currentDate)
     })
 
     trends.push({
-      date: date.toISOString().split("T")[0],
+      date: currentDate.toISOString().split("T")[0],
       tasksCreated: dayTasks.length,
       tasksCompleted: dayCompleted.length,
       completionRate: dayTasks.length > 0 ? Math.round((dayCompleted.length / dayTasks.length) * 100) : 0,
     })
+
+    currentDate.setDate(currentDate.getDate() + 1)
   }
 
   return trends
@@ -472,7 +527,6 @@ const getTeamMemberDetails = async (req, res) => {
   try {
     const currentUser = req.user
     const { memberId } = req.params
-    const { timeframe = "30" } = req.query
 
     const canViewTeam = await PermissionService.hasPermission(currentUser, "task:read:team")
 
@@ -482,14 +536,13 @@ const getTeamMemberDetails = async (req, res) => {
       })
     }
 
-    const daysAgo = Number.parseInt(timeframe)
-    const fromDate = new Date()
-    fromDate.setDate(fromDate.getDate() - daysAgo)
+    // Build date filter using helper
+    const dateFilter = buildDateFilter(req.query)
 
     const memberTasks = await Task.find({
       createdBy: currentUser._id,
       assignedTo: memberId,
-      createdAt: { $gte: fromDate },
+      ...dateFilter,
     })
       .populate("assignedTo", "firstName lastName userName email")
       .sort({ createdAt: -1 })
@@ -503,12 +556,24 @@ const getTeamMemberDetails = async (req, res) => {
       })
     }
 
-    const member = memberTasks[0].assignedTo // fixed
+    const member = memberTasks[0].assignedTo
+
+    // Calculate timeframe for trends
+    const timeframe = req.query.timeframe || "30"
+    const startDate = req.query.startDate
+    const endDate = req.query.endDate
+    
+    let days = Number.parseInt(timeframe)
+    if (startDate && endDate) {
+      const start = new Date(startDate)
+      const end = new Date(endDate)
+      days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1
+    }
 
     const analytics = {
       overview: calculateOverviewStats(memberTasks),
       recentTasks: memberTasks.slice(0, 10),
-      productivityTrend: calculateProductivityTrends(memberTasks, timeframe),
+      productivityTrend: calculateProductivityTrends(memberTasks, days, startDate, endDate),
       priorityBreakdown: calculatePriorityAnalysis(memberTasks),
       timeAccuracy: calculateTimeAccuracy(memberTasks),
     }
@@ -523,7 +588,11 @@ const getTeamMemberDetails = async (req, res) => {
       },
       tasks: memberTasks,
       analytics,
-      timeframe,
+      filters: {
+        timeframe: req.query.timeframe,
+        startDate: req.query.startDate,
+        endDate: req.query.endDate,
+      },
     })
   } catch (error) {
     console.error("Team member details error:", error)
@@ -544,22 +613,8 @@ const getAdminAnalytics = async (req, res) => {
       })
     }
 
-    const { timeframe = "30", startDate, endDate } = req.query
-
-    let dateFilter = {}
-    if (startDate && endDate) {
-      dateFilter = {
-        createdAt: {
-          $gte: new Date(startDate),
-          $lte: new Date(endDate),
-        },
-      }
-    } else {
-      const daysAgo = Number.parseInt(timeframe)
-      const fromDate = new Date()
-      fromDate.setDate(fromDate.getDate() - daysAgo)
-      dateFilter = { createdAt: { $gte: fromDate } }
-    }
+    // Build date filter using helper
+    const dateFilter = buildDateFilter(req.query)
 
     // Aggregate tasks with users and roles
     const tasks = await Task.aggregate([
@@ -608,11 +663,23 @@ const getAdminAnalytics = async (req, res) => {
       status: normalizeStatusStr(t.status),
     }))
 
+    // Calculate timeframe for trends
+    const timeframe = req.query.timeframe || "30"
+    const startDate = req.query.startDate
+    const endDate = req.query.endDate
+    
+    let days = Number.parseInt(timeframe)
+    if (startDate && endDate) {
+      const start = new Date(startDate)
+      const end = new Date(endDate)
+      days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1
+    }
+
     // Overview and distributions
     const overview = calculateOverviewStats(normalized)
     const distribution = calculateTaskDistribution(normalized)
     const completionRates = calculateCompletionRates(normalized)
-    const trends = calculateProductivityTrends(normalized, timeframe)
+    const trends = calculateProductivityTrends(normalized, days, startDate, endDate)
 
     // Role-based analytics
     const byRole = {
@@ -679,7 +746,11 @@ const getAdminAnalytics = async (req, res) => {
 
     res.json({
       success: true,
-      timeframe,
+      filters: {
+        timeframe: req.query.timeframe,
+        startDate: req.query.startDate,
+        endDate: req.query.endDate,
+      },
       data: {
         overview,
         statusDistribution: distribution.byStatus,
