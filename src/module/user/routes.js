@@ -9,6 +9,7 @@ const {
   softDeleteUser,
   restoreSoftDeletedUser,
   getAllUser,
+  deleteUsersBulk,
 } = require("./controllers/user.controller");
 const {
   uploadAvatar,
@@ -46,21 +47,17 @@ router.get(
   getAllUser
 );
 
+router.post("/users/bulk-delete", sessionAuthMiddleware, deleteUsersBulk);
+
 // Generic param routes last
 router.get("/users/:id", sessionAuthMiddleware, getUserById);
 router.put("/users", sessionAuthMiddleware, updateUser);
-router.delete(
-  "/users/:id",
-  sessionAuthMiddleware,
-  adminAuthMiddleware,
-  deleteUser
-);
+router.delete("/users/:id", sessionAuthMiddleware, deleteUser);
 
 router.patch("/users/softDelete/:id", sessionAuthMiddleware, softDeleteUser);
 router.patch(
   "/users/restoreUser/:id",
   sessionAuthMiddleware,
-  adminAuthMiddleware,
   restoreSoftDeletedUser
 );
 

@@ -12,195 +12,11 @@ const emailServiceForToken = new EmailServiceForToken();
 
 const { generateBackupCodes } = require("../services/backupCodeService");
 
-// const createUser = async (req, res) => {
-//   try {
-//     const { firstName, lastName, userName, email, password, age } = req.body;
-//     const currentUser = req.user;
-
-//     const existingUser = await User.findOne({
-//       $or: [
-//         { email: email.toLowerCase() },
-//         { userName: userName.toLowerCase() },
-//       ],
-//     });
-
-//     if (existingUser) {
-//       return res
-//         .status(409)
-//         .json({ message: "User with this email or username already exists" });
-//     }
-
-//     const hashedPassword = await bcrypt.hash(password, 10);
-//     const userRole = await Role.findOne({ name: "user" });
-
-//     const user = new User({
-//       firstName,
-//       lastName,
-//       userName: userName.toLowerCase(),
-//       email: email.toLowerCase(),
-//       password: hashedPassword,
-//       age,
-//       isVerified: true,
-//       roleId: userRole ? userRole._id : null,
-//     });
-
-//     const savedUser = await user.save();
-//     await savedUser.populate("roleId");
-
-//     try {
-//       const welcomeEmailResult = await emailService.sendWelcomeEmail(
-//         savedUser,
-//         currentUser
-//       );
-//       if (welcomeEmailResult.success) {
-//         console.log(`[v0] Welcome email sent to new user: ${savedUser.email}`);
-//       }
-//     } catch (emailError) {
-//       console.error("[v0] Failed to send welcome email:", emailError);
-//     }
-
-//     if (
-//       currentUser &&
-//       currentUser._id.toString() !== savedUser._id.toString()
-//     ) {
-//       try {
-//         const notificationResult =
-//           await emailService.sendAccountCreationNotification(
-//             savedUser,
-//             currentUser
-//           );
-//         if (notificationResult.success) {
-//           console.log(
-//             `[v0] Account creation notification sent to manager: ${currentUser.email}`
-//           );
-//         }
-//       } catch (emailError) {
-//         console.error(
-//           "[v0] Failed to send account creation notification:",
-//           emailError
-//         );
-//       }
-//     }
-
-//     const { password: _, ...userResponse } = savedUser.toObject();
-
-//     res.status(201).json({
-//       message: "User Created Successfully!",
-//       user: userResponse,
-//     });
-//   } catch (err) {
-//     console.error("Create user error:", err);
-//     res.status(500).json({ message: "Internal server error" });
-//   }
-// };
-
-// const createUser = async (req, res) => {
-//   try {
-//     const { firstName, lastName, userName, email, password, age } = req.body;
-//     const currentUser = req.user;
-
-//     const existingUser = await User.findOne({
-//       $or: [
-//         { email: email.toLowerCase() },
-//         { userName: userName.toLowerCase() },
-//       ],
-//     });
-
-//     if (existingUser) {
-//       return res
-//         .status(409)
-//         .json({ message: "User with this email or username already exists" });
-//     }
-
-//     const hashedPassword = await bcrypt.hash(password, 10);
-//     const userRole = await Role.findOne({ name: "user" });
-
-//     const user = new User({
-//       firstName,
-//       lastName,
-//       userName: userName.toLowerCase(),
-//       email: email.toLowerCase(),
-//       password: hashedPassword,
-//       age,
-//       isVerified: true,
-//       roleId: userRole ? userRole._id : null,
-//     });
-
-//     const savedUser = await user.save();
-//     await savedUser.populate("roleId");
-
-//     // =========================
-//     // Generate Backup Codes
-//     // =========================
-//     let backupCodes = [];
-//     try {
-//       backupCodes = await generateBackupCodes(savedUser._id); // returns raw codes
-//     } catch (codeError) {
-//       console.error("[v0] Failed to generate backup codes:", codeError);
-//     }
-
-//     // // =========================
-//     // // Send Welcome Email (optional)
-//     // // =========================
-//     // try {
-//     //   const welcomeEmailResult = await emailService.sendWelcomeEmail(
-//     //     savedUser,
-//     //     currentUser
-//     //   );
-//     //   if (welcomeEmailResult.success) {
-//     //     console.log(`[v0] Welcome email sent to new user: ${savedUser.email}`);
-//     //   }
-//     // } catch (emailError) {
-//     //   console.error("[v0] Failed to send welcome email:", emailError);
-//     // }
-
-//     // Notify manager/admin if currentUser is different from new user
-//     if (
-//       currentUser &&
-//       currentUser._id.toString() !== savedUser._id.toString()
-//     ) {
-//       try {
-//         const notificationResult =
-//           await emailService.sendAccountCreationNotification(
-//             savedUser,
-//             currentUser
-//           );
-//         if (notificationResult.success) {
-//           console.log(
-//             `[v0] Account creation notification sent to manager: ${currentUser.email}`
-//           );
-//         }
-//       } catch (emailError) {
-//         console.error(
-//           "[v0] Failed to send account creation notification:",
-//           emailError
-//         );
-//       }
-//     }
-
-//     // Exclude password from response
-//     const { password: _, ...userResponse } = savedUser.toObject();
-
-//     // =========================
-//     // Send backup codes in response
-//     // =========================
-//     res.status(201).json({
-//       message: "User Created Successfully! Save your backup codes safely.",
-//       user: userResponse,
-//       backupCodes, // frontend should show modal/popup to save these
-//     });
-//   } catch (err) {
-//     console.error("Create user error:", err);
-//     res.status(500).json({ message: "Internal server error" });
-//   }
-// };
-
 const createUser = async (req, res) => {
   try {
     const { firstName, lastName, userName, email, password, age } = req.body;
     const currentUser = req.user;
 
-    // Check if user already exists
     const existingUser = await User.findOne({
       $or: [
         { email: email.toLowerCase() },
@@ -214,11 +30,9 @@ const createUser = async (req, res) => {
         .json({ message: "User with this email or username already exists" });
     }
 
-    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
     const userRole = await Role.findOne({ name: "user" });
 
-    // Create user (without security questions - those will be set in step 2 via auth controller)
     const user = new User({
       firstName,
       lastName,
@@ -228,7 +42,6 @@ const createUser = async (req, res) => {
       age,
       isVerified: true,
       roleId: userRole ? userRole._id : null,
-      // Note: securityQuestions will be set separately in step 2
     });
 
     const savedUser = await user.save();
@@ -242,19 +55,6 @@ const createUser = async (req, res) => {
       console.error("[v0] Failed to generate backup codes:", codeError);
       // Continue without backup codes - they can be regenerated later if needed
     }
-
-    // // Send Welcome Email (optional)
-    // try {
-    //   const welcomeEmailResult = await emailService.sendWelcomeEmail(
-    //     savedUser,
-    //     currentUser
-    //   );
-    //   if (welcomeEmailResult.success) {
-    //     console.log(`[v0] Welcome email sent to new user: ${savedUser.email}`);
-    //   }
-    // } catch (emailError) {
-    //   console.error("[v0] Failed to send welcome email:", emailError);
-    // }
 
     // Notify manager/admin if currentUser is different from new user
     if (
@@ -601,6 +401,49 @@ const restoreSoftDeletedUser = async (req, res) => {
   }
 };
 
+const deleteUsersBulk = async (req, res) => {
+  try {
+    const { ids } = req.body;
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ message: "ids array is required" });
+    }
+
+    // Normalize and validate IDs
+    const uniqueIds = [...new Set(ids.filter(Boolean).map(String))];
+    const validIds = uniqueIds.filter((id) =>
+      mongoose.Types.ObjectId.isValid(id)
+    );
+    if (validIds.length === 0) {
+      return res.status(400).json({ message: "No valid user IDs provided" });
+    }
+
+    // Prevent deleting self
+    const currentUserId = req.user?._id?.toString();
+    const filteredIds = currentUserId
+      ? validIds.filter((id) => id !== currentUserId)
+      : validIds;
+
+    // Exclude admins from deletion
+    const adminRole = await Role.findOne({ name: "admin" });
+    const deleteFilter = {
+      _id: { $in: filteredIds },
+    };
+    if (adminRole) {
+      deleteFilter.roleId = { $ne: adminRole._id };
+    }
+
+    const result = await User.deleteMany(deleteFilter);
+    return res.json({
+      message: `Deleted ${result.deletedCount} users`,
+      deletedCount: result.deletedCount,
+    });
+  } catch (err) {
+    console.error("Bulk delete users error:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
 module.exports = {
   createUser,
   createUsers,
@@ -612,4 +455,5 @@ module.exports = {
   softDeleteUser,
   restoreSoftDeletedUser,
   getAllUser,
+  deleteUsersBulk,
 };
