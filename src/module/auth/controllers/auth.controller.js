@@ -1,6 +1,7 @@
 const User = require("../../user/models/User");
 const Role = require("../../rbac/models/Role");
 const bcrypt = require("bcrypt");
+const SystemSetting = require("../../system/models/SystemSetting"); // block non-admin login during maintenance mode
 const {
   createSession,
   invalidateSession,
@@ -11,7 +12,7 @@ const {
   generateAccessToken,
   verifyAccessToken,
 } = require("../../../utils/jwtUtils");
-const crypto = require('crypto');
+const crypto = require("crypto");
 
 const loginUser = async (req, res) => {
   try {
@@ -38,6 +39,22 @@ const loginUser = async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    // Maintenance check (block non-admin)
+    try {
+      const settings = await SystemSetting.getGlobal();
+      const maintenanceActive = !!settings.maintenanceMode;
+      if (maintenanceActive && user?.roleId?.name !== "admin") {
+        return res.status(423).json({
+          message:
+            settings.maintenanceMessage ||
+            "The system is under maintenance. Please try again later.",
+          code: "MAINTENANCE_MODE",
+        });
+      }
+    } catch (e) {
+      // If maintenance lookup fails, default to proceed (fail-open)
     }
 
     // Assign default role if user doesn't have one
@@ -69,13 +86,12 @@ const loginUser = async (req, res) => {
     const { password: _password, ...userResponse } = user.toObject();
 
     // CHECK FOR SECURITY SETUP MIGRATION
-    const needsSecuritySetup = !user.isSecuritySetupComplete && 
-      (
-        !user.securityQuestions || 
-        user.securityQuestions.length === 0 || 
-        !user.backupCodes || 
-        user.backupCodes.length === 0
-      );
+    const needsSecuritySetup =
+      !user.isSecuritySetupComplete &&
+      (!user.securityQuestions ||
+        user.securityQuestions.length === 0 ||
+        !user.backupCodes ||
+        user.backupCodes.length === 0);
 
     res.status(200).json({
       message: "Login successful!",
@@ -165,13 +181,12 @@ const getCurrentUser = async (req, res) => {
     delete userData.password;
 
     // CHECK FOR SECURITY SETUP MIGRATION
-    const needsSecuritySetup = !userData.isSecuritySetupComplete && 
-      (
-        !userData.securityQuestions || 
-        userData.securityQuestions.length === 0 || 
-        !userData.backupCodes || 
-        userData.backupCodes.length === 0
-      );
+    const needsSecuritySetup =
+      !userData.isSecuritySetupComplete &&
+      (!userData.securityQuestions ||
+        userData.securityQuestions.length === 0 ||
+        !userData.backupCodes ||
+        userData.backupCodes.length === 0);
 
     res.status(200).json({
       message: "Session valid",
@@ -232,7 +247,7 @@ const setSecurityQuestions = async (req, res) => {
     // Update the user
     const user = await User.findByIdAndUpdate(
       userId,
-      { 
+      {
         securityQuestions: hashedQuestions,
         isSecuritySetupComplete: true, // MARK AS COMPLETE
         securitySetupPromptShown: true,
@@ -345,8 +360,8 @@ const completeSecuritySetup = async (req, res) => {
 
     // Validate inputs
     if (!questions || !Array.isArray(questions) || questions.length < 2) {
-      return res.status(400).json({ 
-        message: "At least 2 security questions are required" 
+      return res.status(400).json({
+        message: "At least 2 security questions are required",
       });
     }
 
@@ -372,16 +387,16 @@ const completeSecuritySetup = async (req, res) => {
     // Generate backup codes directly (no service needed)
     const backupCodes = [];
     for (let i = 0; i < 8; i++) {
-      const code = crypto.randomBytes(4).toString('hex').toUpperCase();
+      const code = crypto.randomBytes(4).toString("hex").toUpperCase();
       backupCodes.push(code);
     }
 
     // Update the user with security questions and backup codes
     const user = await User.findByIdAndUpdate(
       userId,
-      { 
+      {
         securityQuestions: hashedQuestions,
-        backupCodes: backupCodes.map(code => ({ code })), // Match your schema format
+        backupCodes: backupCodes.map((code) => ({ code })), // Match your schema format
         isSecuritySetupComplete: true,
         securitySetupPromptShown: true,
       },
@@ -392,7 +407,9 @@ const completeSecuritySetup = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    console.log(`Security setup completed for user: ${userId}, generated ${backupCodes.length} backup codes`);
+    console.log(
+      `Security setup completed for user: ${userId}, generated ${backupCodes.length} backup codes`
+    );
 
     res.status(200).json({
       message: "Security setup completed successfully",
