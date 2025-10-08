@@ -5,7 +5,8 @@ const rbacModule = require("./rbac/init");
 const taskModule = require("./task/init");
 const chatModule = require("./chat/init");
 const analyticsModule = require("./analytics/init");
-const systemModule = require("./system/init"); // add system module to modules
+const systemModule = require("./system/init");
+const projectModule = require("./project/init");
 
 const modules = [
   userModule,
@@ -14,7 +15,8 @@ const modules = [
   taskModule,
   chatModule,
   analyticsModule,
-  systemModule, // include system module
+  systemModule,
+  projectModule,
 ];
 
 const initializeModules = (app) => {

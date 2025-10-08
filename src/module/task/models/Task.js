@@ -48,6 +48,21 @@ const taskSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+    // NEW FIELD: Project reference
+    projectId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Project",
+      required: function() {
+        // If task is created by admin/manager, project is required
+        // For personal tasks by users, project is optional
+        return this.taskType === 'assigned';
+      },
+    },
+    taskType: {
+      type: String,
+      enum: ["personal", "assigned"],
+      default: "assigned", // Tasks created by admin/manager are "assigned"
+    },
     dueDate: {
       type: Date,
     },
@@ -89,7 +104,7 @@ const taskSchema = new mongoose.Schema(
   }
 );
 
-// Indexes for better query performance
+// Updated indexes for better query performance
 taskSchema.index({ assignedTo: 1, status: 1 });
 taskSchema.index({ createdBy: 1 });
 taskSchema.index({ dueDate: 1, status: 1 });
@@ -97,6 +112,9 @@ taskSchema.index({ priority: 1 });
 taskSchema.index({ status: 1 });
 taskSchema.index({ dueDate: 1, dueSoonEmailSent: 1 });
 taskSchema.index({ dueDate: 1, overdueEmailSent: 1 });
+taskSchema.index({ projectId: 1 }); // NEW INDEX
+taskSchema.index({ projectId: 1, status: 1 }); // NEW INDEX
+taskSchema.index({ taskType: 1 }); // NEW INDEX
 
 // Virtual for checking if task is overdue
 taskSchema.virtual("isOverdue").get(function () {
