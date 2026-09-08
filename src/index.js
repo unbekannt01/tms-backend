@@ -19,6 +19,7 @@ const { initSocket } = require("./realtime/socket");
 // Import cron jobs
 require("./cron/deleteUsers.cron");
 // require("./cron/dueDateAlert.cron");
+require("./cron/keepAlive.cron");
 
 const app = express();
 
@@ -54,6 +55,17 @@ initializeModules(app);
 
 app.get("/", (req, res) => {
   res.send("🚀 Server is running successfully");
+});
+
+// Health check endpoint (outside rate limiter — used by UptimeRobot & self-ping)
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "Server is healthy",
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV || "unknown",
+  });
 });
 
 // Health check endpoint
