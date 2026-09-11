@@ -67,6 +67,11 @@ const loginUser = async (req, res) => {
       }
     }
 
+    // Re-populate roleId to ensure it's a full object (not just an ObjectId)
+    if (user.roleId && !user.roleId.name) {
+      await user.populate("roleId");
+    }
+
     // Parse device information
     const deviceInfo = parseDeviceInfo(
       req.headers["user-agent"],
@@ -84,6 +89,11 @@ const loginUser = async (req, res) => {
     await user.save();
 
     const { password: _password, ...userResponse } = user.toObject();
+
+    // Ensure roleId is never null in response — provide safe fallback
+    if (!userResponse.roleId) {
+      userResponse.roleId = { name: "user", displayName: "User", permissions: [] };
+    }
 
     // CHECK FOR SECURITY SETUP MIGRATION
     const needsSecuritySetup =
@@ -179,6 +189,11 @@ const getCurrentUser = async (req, res) => {
     }
 
     delete userData.password;
+
+    // Ensure roleId is never null in response — provide safe fallback
+    if (!userData.roleId) {
+      userData.roleId = { name: "user", displayName: "User", permissions: [] };
+    }
 
     // CHECK FOR SECURITY SETUP MIGRATION
     const needsSecuritySetup =
