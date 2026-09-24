@@ -19,7 +19,6 @@ const { initSocket } = require("./realtime/socket");
 // Import cron jobs
 require("./cron/deleteUsers.cron");
 // require("./cron/dueDateAlert.cron");
-require("./cron/keepAlive.cron");
 
 const app = express();
 
